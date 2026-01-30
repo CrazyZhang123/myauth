@@ -25,12 +25,7 @@ Thumbs.db
 test-output/
 *.tmp
 
-# Documentation files (except README.md and specific docs)
+# Documentation files (except README.md)
 *.md
 *.txt
 !README.md
-!OAUTH_LOGIN_DESIGN.md
-!OAUTH_LOGIN_USAGE.md
-!CODEX_OAUTH_ANALYSIS.md
-!JWT_ID_TOKEN_FIELDS.md
-!HOW_TO_USE_DEV.md
