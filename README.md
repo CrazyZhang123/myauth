@@ -5,7 +5,17 @@
 
 ## 预备条件
 
-### 1. 获取 Codex OAuth 凭证
+### 1. 获取凭证（两种方式）
+
+**方式 1: 直接使用 myauth login（推荐）**
+
+```bash
+myauth login
+```
+
+无需其他工具，直接通过 OAuth 登录获取凭据。
+
+**方式 2: 使用 CLIProxyAPI**
 
 使用 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 获取 Codex 的 OAuth 凭证：
 
@@ -54,7 +64,19 @@ npm link
 
 ## 快速开始
 
-### 1. 首次配置
+### 方式 1: OAuth 登录（推荐）
+
+直接通过 OAuth 登录获取新凭据：
+
+```bash
+myauth login
+```
+
+按照交互式提示完成登录，凭据会自动保存到 `~/.myauth/` 目录。
+
+### 方式 2: 使用现有凭据
+
+如果已有 CLIProxyAPI 生成的凭据，可以配置工具进行切换：
 
 ```bash
 myauth whoami
@@ -124,6 +146,23 @@ myauth use --help
 
 ## 命令说明
 
+### login - OAuth 登录（新功能）
+
+```bash
+myauth login
+```
+
+全交互式 OAuth 登录流程，自动获取并保存凭据。
+
+**特性**：
+- ✅ 支持 Plus 和 Team 订阅
+- ✅ 自动打开浏览器授权
+- ✅ 安全的 PKCE + State 验证
+- ✅ 自动更新缓存
+- ✅ 零 Token 泄露
+
+**详细使用说明**：参见 [OAUTH_LOGIN_USAGE.md](./OAUTH_LOGIN_USAGE.md)
+
 ### whoami - 配置工具
 
 ```bash
@@ -149,6 +188,7 @@ myauth use --index 1 --no-backup  # 切换凭据（不备份）
 
 ## 特性
 
+- ✅ **OAuth 登录**：直接通过浏览器登录获取凭据（新功能）
 - ✅ **合并更新**：只替换目标 JSON 中对应字段，不覆盖其他配置
 - ✅ **类型过滤**：只读取和显示 `type` 为 `codex` 的凭据
 - ✅ **安全策略**：自动备份、原子写入、零 Token 泄露
