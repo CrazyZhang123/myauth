@@ -196,11 +196,10 @@ const ERROR_HTML = (error) => `<!DOCTYPE html>
 
 /**
  * 创建 OAuth 回调服务器
- * @param {number} port - 监听端口
  * @param {string} expectedState - 期望的 state 值
  * @returns {Promise<{server: http.Server, codePromise: Promise<string>}>}
  */
-export function createCallbackServer(port, expectedState) {
+export function createCallbackServer(expectedState) {
   let resolveCode, rejectCode;
   
   const codePromise = new Promise((resolve, reject) => {
@@ -209,6 +208,7 @@ export function createCallbackServer(port, expectedState) {
   });
 
   const server = http.createServer((req, res) => {
+    const port = server.address()?.port || 0;
     const url = new URL(req.url, `http://127.0.0.1:${port}`);
 
     // 处理回调
@@ -266,67 +266,25 @@ export function createCallbackServer(port, expectedState) {
 }
 
 /**
- * 查找可用端口（从 startPort 开始递增）
- * @param {number} startPort - 起始端口
- * @param {number} maxAttempts - 最大尝试次数
- * @returns {Promise<number>}
- */
-export function findAvailablePort(startPort = 53682, maxAttempts = 10) {
-  return new Promise((resolve, reject) => {
-    let currentPort = startPort;
-    let attempts = 0;
-
-    function tryPort() {
-      if (attempts >= maxAttempts) {
-        reject(new Error(`无法找到可用端口 (尝试了 ${startPort}-${currentPort - 1})`));
-        return;
-      }
-
-      const testServer = http.createServer();
-      
-      testServer.once('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-          attempts++;
-          currentPort++;
-          tryPort();
-        } else {
-          reject(err);
-        }
-      });
-
-      testServer.once('listening', () => {
-        testServer.close(() => {
-          resolve(currentPort);
-        });
-      });
-
-      testServer.listen(currentPort, '127.0.0.1');
-    }
-
-    tryPort();
-  });
-}
-
-/**
  * 启动回调服务器并等待授权码
  * @param {string} expectedState - 期望的 state
  * @param {number} timeoutMs - 超时时间（毫秒）
  * @returns {Promise<{code: string, port: number, server: http.Server}>}
  */
 export async function startCallbackServer(expectedState, timeoutMs = 300000) {
-  // 查找可用端口
-  const port = await findAvailablePort();
-
   // 创建服务器
-  const { server, codePromise } = createCallbackServer(port, expectedState);
+  const { server, codePromise } = createCallbackServer(expectedState);
 
-  // 启动服务器
+  // 启动服务器，端口 0 让 OS 自动分配可用端口
   await new Promise((resolve, reject) => {
     server.once('error', reject);
-    server.listen(port, '127.0.0.1', () => {
+    server.listen(0, '127.0.0.1', () => {
       resolve();
     });
   });
+
+  // 获取实际分配的端口
+  const port = server.address().port;
 
   // 等待授权码（带超时）
   const timeoutPromise = new Promise((_, reject) => {
