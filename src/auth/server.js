@@ -211,8 +211,8 @@ export function createCallbackServer(expectedState) {
     const port = server.address()?.port || 0;
     const url = new URL(req.url, `http://127.0.0.1:${port}`);
 
-    // 处理回调
-    if (url.pathname === '/callback') {
+    // 处理回调 - 支持 /callback 和 /auth/callback
+    if (url.pathname === '/callback' || url.pathname === '/auth/callback') {
       const code = url.searchParams.get('code');
       const state = url.searchParams.get('state');
       const error = url.searchParams.get('error');
