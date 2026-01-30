@@ -25,7 +25,7 @@ Thumbs.db
 test-output/
 *.tmp
 
-# Local documentation (not for GitHub)
-GITHUB_UPLOAD.md
-UPLOAD_STEPS.txt
-PUSH_TO_GITHUB.txt
+# Documentation files (except README.md)
+*.md
+*.txt
+!README.md

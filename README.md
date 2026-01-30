@@ -28,14 +28,30 @@ cd CLIProxyAPI
 
 工具会使用以下目录：
 
+**Windows**：
 ```
 C:\Users\{user}\.cli-proxy-api\        # CLI 凭证源目录（由 CLIProxyAPI 创建）
 C:\Users\{user}\.codex\auth.json       # Codex 目标配置文件
-~\.myauth\                              # myauth 配置目录（自动创建）
+C:\Users\{user}\.myauth\               # myauth 配置目录（自动创建）
   ├── config.json                       # 工具配置
   ├── cache.json                        # 凭据缓存
   └── state.json                        # 当前状态
 ```
+
+**macOS/Linux**：
+```
+~/.cli-proxy-api/                       # CLI 凭证源目录（由 CLIProxyAPI 创建）
+~/.codex/auth.json                      # Codex 目标配置文件
+~/.myauth/                              # myauth 配置目录（自动创建）
+  ├── config.json                       # 工具配置
+  ├── cache.json                        # 凭据缓存
+  └── state.json                        # 当前状态
+```
+
+**路径说明**：
+- 支持使用 `~` 符号表示用户主目录
+- Windows: `~` = `C:\Users\{user}`
+- macOS/Linux: `~` = `/Users/{user}` 或 `/home/{user}`
 
 ## 安装
 
@@ -54,21 +70,36 @@ npm link
 myauth whoami
 ```
 
-按提示输入配置信息：
+按提示输入配置信息（支持 `~` 路径符号）：
 
-| 配置项 | 说明 | 示例 |
-|--------|------|------|
-| **fromDir** | CLI 凭证源目录 | `C:\Users\ZJJ\.cli-proxy-api` |
-| **targetFile** | Codex 目标配置文件 | `C:\Users\ZJJ\.codex\auth.json` |
-| **recursive** | 是否递归扫描子目录 | `n` |
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| **fromDir** | `~/.cli-proxy-api` | CLI 凭证源目录 |
+| **targetFile** | `~/.codex/auth.json` | Codex 目标配置文件 |
+| **recursive** | `n` | 是否递归扫描子目录 |
 
-**获取用户名**：
+**路径示例**：
+
 ```bash
 # Windows
-echo %USERNAME%
+fromDir: C:\Users\ZJJ\.cli-proxy-api
+# 或使用 ~ 符号
+fromDir: ~/.cli-proxy-api
 
-# Linux/macOS
-echo $USER
+# macOS/Linux
+fromDir: /Users/zjj/.cli-proxy-api
+# 或使用 ~ 符号
+fromDir: ~/.cli-proxy-api
+```
+
+**快速配置**（使用默认值）：
+
+```bash
+myauth whoami
+# 直接按回车使用默认路径
+请输入凭据源目录路径 (默认: ~/.cli-proxy-api): [回车]
+请输入目标 JSON 文件路径 (默认: ~/.codex/auth.json): [回车]
+是否递归扫描子目录？(y/N): n
 ```
 
 ### 2. 查看可用凭据

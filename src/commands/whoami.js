@@ -1,6 +1,7 @@
 import { loadConfig, saveConfig, loadCache, saveCache, loadState } from '../utils/config.js';
 import { question, confirm } from '../utils/prompt.js';
 import { scanCredentials } from '../utils/scanner.js';
+import { resolvePath, getDefaultPaths, formatPath } from '../utils/path.js';
 import fs from 'fs';
 
 export async function whoami() {
@@ -10,17 +11,19 @@ export async function whoami() {
     // 首次配置：交互式引导
     console.log('欢迎使用 myauth！首次使用需要配置。\n');
     
-    const fromDir = await question('请输入凭据源目录路径 (fromDir): ');
-    if (!fromDir || !fs.existsSync(fromDir)) {
-      console.error('错误: 目录不存在或路径无效');
+    const defaults = getDefaultPaths();
+    
+    const fromDirInput = await question(`请输入凭据源目录路径 (默认: ${formatPath(defaults.fromDir)}): `);
+    const fromDir = resolvePath(fromDirInput || defaults.fromDir);
+    
+    if (!fs.existsSync(fromDir)) {
+      console.error(`错误: 目录不存在: ${fromDir}`);
+      console.error('提示: 请先使用 CLIProxyAPI 获取凭据');
       process.exit(1);
     }
 
-    const targetFile = await question('请输入目标 JSON 文件路径 (targetFile): ');
-    if (!targetFile) {
-      console.error('错误: 目标文件路径不能为空');
-      process.exit(1);
-    }
+    const targetFileInput = await question(`请输入目标 JSON 文件路径 (默认: ${formatPath(defaults.targetFile)}): `);
+    const targetFile = resolvePath(targetFileInput || defaults.targetFile);
 
     const recursiveAnswer = await question('是否递归扫描子目录？(y/N): ');
     const recursive = recursiveAnswer.toLowerCase() === 'y';
@@ -41,8 +44,8 @@ export async function whoami() {
 
   // 已有配置：显示摘要并询问是否修改
   console.log('=== 当前配置 ===');
-  console.log(`fromDir: ${config.fromDir}`);
-  console.log(`targetFile: ${config.targetFile}`);
+  console.log(`fromDir: ${formatPath(config.fromDir)}`);
+  console.log(`targetFile: ${formatPath(config.targetFile)}`);
   console.log(`recursive: ${config.recursive ? '是' : '否'}`);
   console.log();
 
@@ -73,19 +76,19 @@ export async function whoami() {
   if (shouldModify) {
     console.log('\n请输入新配置（直接回车保持原值）:\n');
     
-    const fromDir = await question(`fromDir [${config.fromDir}]: `);
-    const targetFile = await question(`targetFile [${config.targetFile}]: `);
+    const fromDirInput = await question(`fromDir [${formatPath(config.fromDir)}]: `);
+    const targetFileInput = await question(`targetFile [${formatPath(config.targetFile)}]: `);
     const recursiveAnswer = await question(`recursive (y/N) [${config.recursive ? 'y' : 'N'}]: `);
     
     const newConfig = {
-      fromDir: fromDir || config.fromDir,
-      targetFile: targetFile || config.targetFile,
+      fromDir: resolvePath(fromDirInput || config.fromDir),
+      targetFile: resolvePath(targetFileInput || config.targetFile),
       recursive: recursiveAnswer.toLowerCase() === 'y' || (recursiveAnswer === '' && config.recursive)
     };
 
     // 验证路径
     if (!fs.existsSync(newConfig.fromDir)) {
-      console.error('错误: fromDir 不存在');
+      console.error(`错误: fromDir 不存在: ${newConfig.fromDir}`);
       process.exit(1);
     }
 
