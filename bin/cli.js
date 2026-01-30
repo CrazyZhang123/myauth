@@ -19,8 +19,8 @@ program
   $ myauth use --index 1       切换到第 1 个凭据
   
 默认路径:
-  CLI 凭证: C:\\Users\\{user}\\.cli-proxy-api
-  Codex 目标: C:\\Users\\{user}\\.codex\\auth.json
+  CLI 凭证: ~/.cli-proxy-api
+  Codex 目标: ~/.codex/auth.json
   
 更多信息: https://github.com/CrazyZhang123/myauth
 `);

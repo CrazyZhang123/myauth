@@ -26,19 +26,8 @@ cd CLIProxyAPI
 
 ### 3. 目录结构
 
-工具会使用以下目录：
+工具会使用以下目录（跨平台统一路径）：
 
-**Windows**：
-```
-C:\Users\{user}\.cli-proxy-api\        # CLI 凭证源目录（由 CLIProxyAPI 创建）
-C:\Users\{user}\.codex\auth.json       # Codex 目标配置文件
-C:\Users\{user}\.myauth\               # myauth 配置目录（自动创建）
-  ├── config.json                       # 工具配置
-  ├── cache.json                        # 凭据缓存
-  └── state.json                        # 当前状态
-```
-
-**macOS/Linux**：
 ```
 ~/.cli-proxy-api/                       # CLI 凭证源目录（由 CLIProxyAPI 创建）
 ~/.codex/auth.json                      # Codex 目标配置文件
@@ -51,7 +40,8 @@ C:\Users\{user}\.myauth\               # myauth 配置目录（自动创建）
 **路径说明**：
 - 支持使用 `~` 符号表示用户主目录
 - Windows: `~` = `C:\Users\{user}`
-- macOS/Linux: `~` = `/Users/{user}` 或 `/home/{user}`
+- macOS: `~` = `/Users/{user}`
+- Linux: `~` = `/home/{user}`
 
 ## 安装
 
@@ -81,15 +71,14 @@ myauth whoami
 **路径示例**：
 
 ```bash
-# Windows
-fromDir: C:\Users\ZJJ\.cli-proxy-api
-# 或使用 ~ 符号
+# 所有平台统一使用 ~ 符号
 fromDir: ~/.cli-proxy-api
+targetFile: ~/.codex/auth.json
 
-# macOS/Linux
-fromDir: /Users/zjj/.cli-proxy-api
-# 或使用 ~ 符号
-fromDir: ~/.cli-proxy-api
+# 或使用完整路径
+# Windows: C:\Users\ZJJ\.cli-proxy-api
+# macOS: /Users/zjj/.cli-proxy-api
+# Linux: /home/zjj/.cli-proxy-api
 ```
 
 **快速配置**（使用默认值）：
@@ -192,7 +181,7 @@ myauth use --index 1 --no-backup  # 切换凭据（不备份）
 
 ### 源 JSON（CLI 凭据）
 
-位置：`C:\Users\{user}\.cli-proxy-api\*.json`
+位置：`~/.cli-proxy-api/*.json`
 
 ```json
 {
@@ -208,7 +197,7 @@ myauth use --index 1 --no-backup  # 切换凭据（不备份）
 
 ### 目标 JSON（Codex 配置）
 
-位置：`C:\Users\{user}\.codex\auth.json`
+位置：`~/.codex/auth.json`
 
 ```json
 {
