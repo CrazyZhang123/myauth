@@ -4,22 +4,24 @@ import { Command } from 'commander';
 import { whoami } from '../src/commands/whoami.js';
 import { ls } from '../src/commands/ls.js';
 import { use } from '../src/commands/use.js';
+import { login } from '../src/commands/login.js';
 
 const program = new Command();
 
 program
   .name('myauth')
-  .description('凭据切换 CLI 工具 - 基于 CLIProxyAPI 项目')
+  .description('凭据切换 CLI 工具 - 支持 OAuth 登录和凭据管理')
   .version('1.0.0')
   .addHelpText('after', `
 示例:
+  $ myauth login               OAuth 登录获取新凭据
   $ myauth whoami              配置工具
   $ myauth ls                  列出可用凭据
   $ myauth ls --refresh        刷新凭据列表
   $ myauth use --index 1       切换到第 1 个凭据
   
 默认路径:
-  CLI 凭证: ~/.cli-proxy-api
+  凭据目录: ~/.myauth
   Codex 目标: ~/.codex/auth.json
   
 更多信息: https://github.com/CrazyZhang123/myauth
@@ -29,6 +31,11 @@ program
   .command('whoami')
   .description('配置工具或查看当前状态')
   .action(whoami);
+
+program
+  .command('login')
+  .description('OAuth 登录获取新凭据')
+  .action(login);
 
 program
   .command('ls')
