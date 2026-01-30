@@ -34,7 +34,8 @@ export function getDefaultPaths() {
   const homeDir = os.homedir();
   
   return {
-    fromDir: path.join(homeDir, '.cli-proxy-api'),
+    fromDir: path.join(homeDir, '.cli-proxy-api'),  // CLIProxyAPI 凭据
+    oauthDir: path.join(homeDir, '.myauth'),         // OAuth 登录凭据
     targetFile: path.join(homeDir, '.codex', 'auth.json')
   };
 }

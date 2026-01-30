@@ -39,6 +39,8 @@ export async function scanCredentials(fromDir, recursive = false) {
         path: file,
         email: json.email || null,
         type: json.type || null,
+        plan: json.plan || null,
+        team_space: json.team_space || null,
         id_token: json.id_token || null,
         access_token: json.access_token || null,
         account_id: json.account_id || null,

@@ -23,26 +23,56 @@ export async function ls(options) {
   // 输出总数
   console.log(`可用凭据源总数: ${cache.length}\n`);
 
-  // 输出列表（只包含 index, email, type）
+  // 根据来源类型决定显示的列
+  const isOAuth = config.source === 'oauth';
+
+  // 输出列表
   if (cache.length > 0) {
-    console.log('INDEX | EMAIL                          | TYPE');
-    console.log('------|--------------------------------|----------');
-    
-    for (const item of cache) {
-      const index = item.index.padEnd(5);
-      const email = (item.email || '-').padEnd(30);
-      const type = item.type || '-';
-      console.log(`${index} | ${email} | ${type}`);
+    if (isOAuth) {
+      // OAuth 凭据：显示 INDEX | PLAN | SPACE | EMAIL | TYPE
+      console.log('INDEX | PLAN  | SPACE          | EMAIL                          | TYPE');
+      console.log('------|-------|----------------|--------------------------------|----------');
+      
+      for (const item of cache) {
+        const index = item.index.padEnd(5);
+        const plan = (item.plan || '-').padEnd(5);
+        const space = (item.team_space || '-').padEnd(14);
+        const email = (item.email || '-').padEnd(30);
+        const type = item.type || '-';
+        console.log(`${index} | ${plan} | ${space} | ${email} | ${type}`);
+      }
+    } else {
+      // CLIProxyAPI 凭据：显示 INDEX | EMAIL | TYPE
+      console.log('INDEX | EMAIL                          | TYPE');
+      console.log('------|--------------------------------|----------');
+      
+      for (const item of cache) {
+        const index = item.index.padEnd(5);
+        const email = (item.email || '-').padEnd(30);
+        const type = item.type || '-';
+        console.log(`${index} | ${email} | ${type}`);
+      }
     }
   }
 
   // 导出 CSV
   if (options.csv) {
-    const csvLines = ['index,email,type'];
+    const csvLines = isOAuth 
+      ? ['index,plan,team_space,email,type']
+      : ['index,email,type'];
+      
     for (const item of cache) {
-      const email = item.email || '';
-      const type = item.type || '';
-      csvLines.push(`${item.index},${email},${type}`);
+      if (isOAuth) {
+        const plan = item.plan || '';
+        const space = item.team_space || '';
+        const email = item.email || '';
+        const type = item.type || '';
+        csvLines.push(`${item.index},${plan},${space},${email},${type}`);
+      } else {
+        const email = item.email || '';
+        const type = item.type || '';
+        csvLines.push(`${item.index},${email},${type}`);
+      }
     }
     
     fs.writeFileSync(options.csv, csvLines.join('\n'), 'utf-8');

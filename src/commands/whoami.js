@@ -11,14 +11,46 @@ export async function whoami() {
     // 首次配置：交互式引导
     console.log('欢迎使用 myauth！首次使用需要配置。\n');
     
-    const defaults = getDefaultPaths();
+    // 询问凭据来源
+    console.log('请选择凭据来源:');
+    console.log('  [1] OAuth 登录 (推荐) - 使用 myauth login 获取的凭据');
+    console.log('  [2] CLIProxyAPI - 使用 CLIProxyAPI 工具获取的凭据');
     
-    const fromDirInput = await question(`请输入凭据源目录路径 (默认: ${formatPath(defaults.fromDir)}): `);
-    const fromDir = resolvePath(fromDirInput || defaults.fromDir);
+    let sourceChoice;
+    while (true) {
+      sourceChoice = await question('\n请输入选项 (1/2): ');
+      if (sourceChoice === '1' || sourceChoice === '2') {
+        break;
+      }
+      console.log('无效选项，请输入 1 或 2');
+    }
+    
+    const defaults = getDefaultPaths();
+    let fromDir;
+    
+    if (sourceChoice === '1') {
+      // OAuth 登录凭据
+      console.log('\n✓ 已选择: OAuth 登录凭据');
+      console.log(`默认目录: ${formatPath(defaults.oauthDir)}\n`);
+      
+      const fromDirInput = await question(`请输入凭据源目录路径 (默认: ${formatPath(defaults.oauthDir)}): `);
+      fromDir = resolvePath(fromDirInput || defaults.oauthDir);
+    } else {
+      // CLIProxyAPI 凭据
+      console.log('\n✓ 已选择: CLIProxyAPI 凭据');
+      console.log(`默认目录: ${formatPath(defaults.fromDir)}\n`);
+      
+      const fromDirInput = await question(`请输入凭据源目录路径 (默认: ${formatPath(defaults.fromDir)}): `);
+      fromDir = resolvePath(fromDirInput || defaults.fromDir);
+    }
     
     if (!fs.existsSync(fromDir)) {
       console.error(`错误: 目录不存在: ${fromDir}`);
-      console.error('提示: 请先使用 CLIProxyAPI 获取凭据');
+      if (sourceChoice === '1') {
+        console.error('提示: 请先运行 myauth login 获取凭据');
+      } else {
+        console.error('提示: 请先使用 CLIProxyAPI 获取凭据');
+      }
       process.exit(1);
     }
 
@@ -28,8 +60,13 @@ export async function whoami() {
     const recursiveAnswer = await question('是否递归扫描子目录？(y/N): ');
     const recursive = recursiveAnswer.toLowerCase() === 'y';
 
-    // 保存配置
-    const newConfig = { fromDir, targetFile, recursive };
+    // 保存配置（包含来源类型）
+    const newConfig = { 
+      fromDir, 
+      targetFile, 
+      recursive,
+      source: sourceChoice === '1' ? 'oauth' : 'cliproxyapi'
+    };
     saveConfig(newConfig);
     console.log('\n✓ 配置已保存\n');
 
@@ -44,6 +81,7 @@ export async function whoami() {
 
   // 已有配置：显示摘要并询问是否修改
   console.log('=== 当前配置 ===');
+  console.log(`来源: ${config.source === 'oauth' ? 'OAuth 登录' : 'CLIProxyAPI'}`);
   console.log(`fromDir: ${formatPath(config.fromDir)}`);
   console.log(`targetFile: ${formatPath(config.targetFile)}`);
   console.log(`recursive: ${config.recursive ? '是' : '否'}`);
@@ -59,6 +97,12 @@ export async function whoami() {
       console.log('=== 当前生效账号 ===');
       console.log(`index: ${current.index}`);
       console.log(`email: ${current.email || '-'}`);
+      if (config.source === 'oauth' && current.plan) {
+        console.log(`plan: ${current.plan}`);
+        if (current.team_space) {
+          console.log(`team_space: ${current.team_space}`);
+        }
+      }
       console.log(`更新时间: ${state.updated_at || '-'}`);
     } else {
       console.log('=== 当前生效账号 ===');
@@ -76,14 +120,46 @@ export async function whoami() {
   if (shouldModify) {
     console.log('\n请输入新配置（直接回车保持原值）:\n');
     
-    const fromDirInput = await question(`fromDir [${formatPath(config.fromDir)}]: `);
+    // 询问是否切换来源
+    console.log('当前来源:', config.source === 'oauth' ? 'OAuth 登录' : 'CLIProxyAPI');
+    const switchSource = await confirm('是否切换凭据来源？');
+    
+    let newSource = config.source;
+    let newFromDir = config.fromDir;
+    
+    if (switchSource) {
+      console.log('\n请选择新的凭据来源:');
+      console.log('  [1] OAuth 登录');
+      console.log('  [2] CLIProxyAPI');
+      
+      let sourceChoice;
+      while (true) {
+        sourceChoice = await question('\n请输入选项 (1/2): ');
+        if (sourceChoice === '1' || sourceChoice === '2') {
+          break;
+        }
+        console.log('无效选项，请输入 1 或 2');
+      }
+      
+      newSource = sourceChoice === '1' ? 'oauth' : 'cliproxyapi';
+      const defaults = getDefaultPaths();
+      const defaultDir = sourceChoice === '1' ? defaults.oauthDir : defaults.fromDir;
+      
+      const fromDirInput = await question(`fromDir [${formatPath(defaultDir)}]: `);
+      newFromDir = resolvePath(fromDirInput || defaultDir);
+    } else {
+      const fromDirInput = await question(`fromDir [${formatPath(config.fromDir)}]: `);
+      newFromDir = resolvePath(fromDirInput || config.fromDir);
+    }
+    
     const targetFileInput = await question(`targetFile [${formatPath(config.targetFile)}]: `);
     const recursiveAnswer = await question(`recursive (y/N) [${config.recursive ? 'y' : 'N'}]: `);
     
     const newConfig = {
-      fromDir: resolvePath(fromDirInput || config.fromDir),
+      fromDir: newFromDir,
       targetFile: resolvePath(targetFileInput || config.targetFile),
-      recursive: recursiveAnswer.toLowerCase() === 'y' || (recursiveAnswer === '' && config.recursive)
+      recursive: recursiveAnswer.toLowerCase() === 'y' || (recursiveAnswer === '' && config.recursive),
+      source: newSource
     };
 
     // 验证路径
