@@ -103,6 +103,12 @@ export function exchangeCodeForTokens(code, codeVerifier) {
       }
     };
 
+    // 调试信息
+    console.log('\n[调试] Token 交换请求:');
+    console.log('URL:', OAUTH_CONFIG.tokenUrl);
+    console.log('Headers:', options.headers);
+    console.log('Body:', postData.substring(0, 200) + '...\n');
+
     const req = https.request(options, (res) => {
       let data = '';
 
@@ -111,10 +117,14 @@ export function exchangeCodeForTokens(code, codeVerifier) {
       });
 
       res.on('end', () => {
+        console.log('[调试] 响应状态码:', res.statusCode);
+        console.log('[调试] 响应内容:', data.substring(0, 500));
+        
         if (res.statusCode !== 200) {
           try {
             const error = JSON.parse(data);
-            reject(new Error(`Token 交换失败: ${error.error_description || error.error || data}`));
+            const errorMsg = error.error_description || error.error || JSON.stringify(error);
+            reject(new Error(`Token 交换失败 (${res.statusCode}): ${errorMsg}`));
           } catch {
             reject(new Error(`Token 交换失败 (HTTP ${res.statusCode}): ${data}`));
           }
@@ -125,12 +135,13 @@ export function exchangeCodeForTokens(code, codeVerifier) {
           const tokens = JSON.parse(data);
           resolve(tokens);
         } catch (err) {
-          reject(new Error(`解析 token 响应失败: ${err.message}`));
+          reject(new Error(`解析 token 响应失败: ${err.message}\n响应内容: ${data}`));
         }
       });
     });
 
     req.on('error', (err) => {
+      console.error('[调试] 请求错误:', err);
       reject(new Error(`Token 请求失败: ${err.message}`));
     });
 
