@@ -13,7 +13,9 @@ export const OAUTH_CONFIG = {
   tokenUrl: 'https://auth.openai.com/oauth/token',
   clientId: 'app_EMoamEEZ73f0CkXaXp7hrann',
   scopes: ['openid', 'email', 'profile', 'offline_access'],
-  redirectUriBase: 'http://127.0.0.1'
+  // 必须使用 localhost:1455，这是 OpenAI 预先注册的 redirect_uri
+  redirectUri: 'http://localhost:1455/auth/callback',
+  callbackPort: 1455
 };
 
 /**
@@ -50,18 +52,15 @@ export function generateState() {
 
 /**
  * 生成授权 URL
- * @param {number} port - 回调端口
  * @param {string} state - CSRF 防护 state
  * @param {string} codeChallenge - PKCE challenge
  * @returns {string}
  */
-export function generateAuthUrl(port, state, codeChallenge) {
-  const redirectUri = `${OAUTH_CONFIG.redirectUriBase}:${port}/callback`;
-  
+export function generateAuthUrl(state, codeChallenge) {
   const params = new URLSearchParams({
     client_id: OAUTH_CONFIG.clientId,
     response_type: 'code',
-    redirect_uri: redirectUri,
+    redirect_uri: OAUTH_CONFIG.redirectUri,
     scope: OAUTH_CONFIG.scopes.join(' '),
     state: state,
     code_challenge: codeChallenge,
@@ -78,18 +77,15 @@ export function generateAuthUrl(port, state, codeChallenge) {
  * 交换授权码获取 tokens
  * @param {string} code - 授权码
  * @param {string} codeVerifier - PKCE verifier
- * @param {number} port - 回调端口
  * @returns {Promise<{id_token: string, access_token: string, refresh_token: string, expires_in: number}>}
  */
-export function exchangeCodeForTokens(code, codeVerifier, port) {
+export function exchangeCodeForTokens(code, codeVerifier) {
   return new Promise((resolve, reject) => {
-    const redirectUri = `${OAUTH_CONFIG.redirectUriBase}:${port}/callback`;
-    
     const postData = new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: OAUTH_CONFIG.clientId,
       code: code,
-      redirect_uri: redirectUri,
+      redirect_uri: OAUTH_CONFIG.redirectUri,
       code_verifier: codeVerifier
     }).toString();
 

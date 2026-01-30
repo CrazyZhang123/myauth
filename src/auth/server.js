@@ -268,22 +268,26 @@ export function createCallbackServer(expectedState) {
 /**
  * 启动回调服务器
  * @param {string} expectedState - 期望的 state
+ * @param {number} port - 监听端口（默认 1455）
  * @returns {Promise<{port: number, server: http.Server, waitForCode: () => Promise<string>}>}
  */
-export async function startCallbackServer(expectedState) {
+export async function startCallbackServer(expectedState, port = 1455) {
   // 创建服务器
   const { server, codePromise } = createCallbackServer(expectedState);
 
-  // 启动服务器，端口 0 让 OS 自动分配可用端口
+  // 启动服务器，使用指定端口（OpenAI 预先注册的端口）
   await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
+    server.once('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        reject(new Error(`端口 ${port} 已被占用，请关闭占用该端口的程序后重试`));
+      } else {
+        reject(err);
+      }
+    });
+    server.listen(port, '127.0.0.1', () => {
       resolve();
     });
   });
-
-  // 获取实际分配的端口
-  const port = server.address().port;
 
   // 返回端口、服务器和等待授权码的函数
   return {

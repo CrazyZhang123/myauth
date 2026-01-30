@@ -131,19 +131,21 @@ export async function login() {
     let port, server, waitForCode;
     
     try {
-      const result = await startCallbackServer(state);
+      const result = await startCallbackServer(state, 1455);
       port = result.port;
       server = result.server;
       waitForCode = result.waitForCode;
       console.log(`✓ 回调服务器已启动 (端口: ${port})\n`);
     } catch (err) {
       console.error(`\n错误: ${err.message}`);
-      console.error('提示: 请检查端口是否被占用，或稍后重试');
+      if (err.message.includes('已被占用')) {
+        console.error('提示: 请关闭占用端口 1455 的程序，或检查是否有其他 myauth login 正在运行');
+      }
       process.exit(1);
     }
 
     // 4. 生成授权 URL
-    const authUrl = generateAuthUrl(port, state, codeChallenge);
+    const authUrl = generateAuthUrl(state, codeChallenge);
 
     // 5. 打开浏览器
     console.log('正在打开浏览器进行授权...');
@@ -151,12 +153,18 @@ export async function login() {
 
     if (!browserOpened) {
       console.log('\n⚠ 无法自动打开浏览器，请手动访问以下 URL:\n');
-      console.log(authUrl);
-      console.log();
     }
+    
+    // 始终显示 URL，方便用户复制
+    console.log(authUrl);
+    console.log();
 
     console.log('等待授权回调...');
-    console.log('(如果浏览器未自动打开，请复制上方 URL 到浏览器)\n');
+    if (!browserOpened) {
+      console.log('(请复制上方 URL 到浏览器中打开)\n');
+    } else {
+      console.log('(如果浏览器未正确跳转，请复制上方 URL)\n');
+    }
 
     // 6. 等待授权码
     let code;
@@ -174,7 +182,7 @@ export async function login() {
     let tokens;
     
     try {
-      tokens = await exchangeCodeForTokens(code, codeVerifier, port);
+      tokens = await exchangeCodeForTokens(code, codeVerifier);
       console.log('✓ Token 交换成功\n');
     } catch (err) {
       server.close();
