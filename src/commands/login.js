@@ -128,24 +128,19 @@ export async function login() {
 
     // 3. 启动本地回调服务器
     console.log('正在启动本地回调服务器...');
-    let callbackResult;
+    let port, server, waitForCode;
     
     try {
-      const serverPromise = startCallbackServer(state);
-      callbackResult = await Promise.race([
-        serverPromise,
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('服务器启动超时')), 5000)
-        )
-      ]);
+      const result = await startCallbackServer(state);
+      port = result.port;
+      server = result.server;
+      waitForCode = result.waitForCode;
+      console.log(`✓ 回调服务器已启动 (端口: ${port})\n`);
     } catch (err) {
       console.error(`\n错误: ${err.message}`);
       console.error('提示: 请检查端口是否被占用，或稍后重试');
       process.exit(1);
     }
-
-    const { code: authCode, port, server } = callbackResult;
-    console.log(`✓ 回调服务器已启动 (端口: ${port})\n`);
 
     // 4. 生成授权 URL
     const authUrl = generateAuthUrl(port, state, codeChallenge);
@@ -166,7 +161,7 @@ export async function login() {
     // 6. 等待授权码
     let code;
     try {
-      code = authCode;
+      code = await waitForCode();
       console.log('✓ 已收到授权码\n');
     } catch (err) {
       server.close();

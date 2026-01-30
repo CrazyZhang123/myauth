@@ -266,12 +266,11 @@ export function createCallbackServer(expectedState) {
 }
 
 /**
- * 启动回调服务器并等待授权码
+ * 启动回调服务器
  * @param {string} expectedState - 期望的 state
- * @param {number} timeoutMs - 超时时间（毫秒）
- * @returns {Promise<{code: string, port: number, server: http.Server}>}
+ * @returns {Promise<{port: number, server: http.Server, waitForCode: () => Promise<string>}>}
  */
-export async function startCallbackServer(expectedState, timeoutMs = 300000) {
+export async function startCallbackServer(expectedState) {
   // 创建服务器
   const { server, codePromise } = createCallbackServer(expectedState);
 
@@ -286,16 +285,15 @@ export async function startCallbackServer(expectedState, timeoutMs = 300000) {
   // 获取实际分配的端口
   const port = server.address().port;
 
-  // 等待授权码（带超时）
-  const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('等待授权超时 (5 分钟)')), timeoutMs);
-  });
-
-  try {
-    const code = await Promise.race([codePromise, timeoutPromise]);
-    return { code, port, server };
-  } catch (err) {
-    server.close();
-    throw err;
-  }
+  // 返回端口、服务器和等待授权码的函数
+  return {
+    port,
+    server,
+    waitForCode: (timeoutMs = 300000) => {
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('等待授权超时 (5 分钟)')), timeoutMs);
+      });
+      return Promise.race([codePromise, timeoutPromise]);
+    }
+  };
 }
