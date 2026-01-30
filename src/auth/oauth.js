@@ -6,6 +6,7 @@
 import crypto from 'crypto';
 import https from 'https';
 import { URL } from 'url';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 // OAuth 配置（来自 CODEX_OAUTH_ANALYSIS.md）
 export const OAUTH_CONFIG = {
@@ -79,6 +80,12 @@ export function generateAuthUrl(state, codeChallenge) {
  * @param {string} codeVerifier - PKCE verifier
  * @returns {Promise<{id_token: string, access_token: string, refresh_token: string, expires_in: number}>}
  */
+/**
+ * 交换授权码获取 tokens
+ * @param {string} code - 授权码
+ * @param {string} codeVerifier - PKCE verifier
+ * @returns {Promise<{id_token: string, access_token: string, refresh_token: string, expires_in: number}>}
+ */
 export function exchangeCodeForTokens(code, codeVerifier) {
   return new Promise((resolve, reject) => {
     const postData = new URLSearchParams({
@@ -91,6 +98,10 @@ export function exchangeCodeForTokens(code, codeVerifier) {
 
     const url = new URL(OAUTH_CONFIG.tokenUrl);
     
+    // 检查代理设置
+    const proxy = process.env.HTTPS_PROXY || process.env.https_proxy || 
+                  process.env.HTTP_PROXY || process.env.http_proxy;
+    
     const options = {
       hostname: url.hostname,
       port: url.port || 443,
@@ -102,6 +113,15 @@ export function exchangeCodeForTokens(code, codeVerifier) {
         'Accept': 'application/json'
       }
     };
+    
+    // 如果有代理，使用代理
+    if (proxy) {
+      options.agent = new HttpsProxyAgent(proxy);
+      console.log('[调试] 使用代理:', proxy);
+    } else {
+      console.log('[调试] 未检测到代理环境变量，使用直连');
+      console.log('[调试] 提示: 如需使用代理，请设置 HTTPS_PROXY 环境变量');
+    }
 
     // 调试信息
     console.log('\n[调试] Token 交换请求:');
@@ -123,7 +143,7 @@ export function exchangeCodeForTokens(code, codeVerifier) {
         if (res.statusCode !== 200) {
           try {
             const error = JSON.parse(data);
-            const errorMsg = error.error_description || error.error || JSON.stringify(error);
+            const errorMsg = error.error?.message || error.error_description || error.error || JSON.stringify(error);
             reject(new Error(`Token 交换失败 (${res.statusCode}): ${errorMsg}`));
           } catch {
             reject(new Error(`Token 交换失败 (HTTP ${res.statusCode}): ${data}`));
