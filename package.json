@@ -1,0 +1,39 @@
+{
+  "name": "myauth",
+  "version": "1.0.0",
+  "description": "凭据切换 CLI 工具 - 在多个凭据 JSON 之间切换，支持合并更新",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "myauth": "./bin/cli.js"
+  },
+  "scripts": {
+    "start": "node bin/cli.js"
+  },
+  "keywords": [
+    "auth",
+    "credentials",
+    "cli",
+    "token",
+    "switch",
+    "config",
+    "codex"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/myauth.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YOUR_USERNAME/myauth/issues"
+  },
+  "homepage": "https://github.com/YOUR_USERNAME/myauth#readme",
+  "dependencies": {
+    "commander": "^12.0.0",
+    "fast-glob": "^3.3.2"
+  }
+}

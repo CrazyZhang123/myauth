@@ -1,0 +1,16 @@
+{
+  "tokens": {
+    "id_token": "old_token_1",
+    "access_token": "old_token_2",
+    "account_id": "old_id"
+  },
+  "last_refresh": "2026-01-01T00:00:00+08:00",
+  "other_config": {
+    "keep_this": "这个字段不会被覆盖",
+    "api_endpoint": "https://api.example.com"
+  },
+  "settings": {
+    "theme": "dark",
+    "language": "zh-CN"
+  }
+}

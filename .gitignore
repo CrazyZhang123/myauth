@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Config and cache
+.myauth/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Backup files
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+test-output/
+*.tmp
+
+# Local documentation (not for GitHub)
+GITHUB_UPLOAD.md
+UPLOAD_STEPS.txt
+PUSH_TO_GITHUB.txt
