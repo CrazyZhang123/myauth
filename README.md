@@ -33,20 +33,17 @@
 
 ## 🚀 快速开始
 
-### 方式一：使用 npx（推荐，无需安装）
+### 方式一：从 GitHub 直接安装（推荐）
 
 ```bash
-npx @crazyzhang123/myauth
-```
+# 全局安装
+npm install -g CrazyZhang123/myauth
 
-### 方式二：全局安装
-
-```bash
-npm install -g @crazyzhang123/myauth
+# 运行
 myauth
 ```
 
-### 方式三：从源码安装
+### 方式二：从源码安装
 
 ```bash
 git clone https://github.com/CrazyZhang123/myauth.git
@@ -71,8 +68,6 @@ export HTTPS_PROXY=http://127.0.0.1:7890
 
 ```bash
 myauth
-# 或使用 npx
-npx @crazyzhang123/myauth
 ```
 
 就这么简单！🎉
@@ -348,10 +343,7 @@ taskkill /PID <PID> /F
 ### Q: 如何卸载？
 ```bash
 # 如果是全局安装
-npm uninstall -g @crazyzhang123/myauth
-
-# 如果是从源码安装
-npm unlink -g myauth
+npm uninstall -g myauth
 
 # 删除配置（可选）
 rm -rf ~/.myauth

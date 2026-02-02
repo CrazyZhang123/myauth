@@ -1,5 +1,5 @@
 {
-  "name": "@crazyzhang123/myauth",
+  "name": "myauth",
   "version": "1.0.0",
   "description": "OAuth 凭据管理工具 - 支持多账号快速切换的 CLI 工具",
   "main": "bin/cli.js",
@@ -20,7 +20,8 @@
     "config",
     "codex",
     "pkce",
-    "multi-account"
+    "multi-account",
+    "openai"
   ],
   "author": "CrazyZhang123",
   "license": "MIT",
