@@ -21,7 +21,7 @@ export async function menu() {
     clearScreen();
     
     // 标题
-    console.log(chalk.cyan.bold('🔐 myauth - OAuth 凭据管理工具'));
+    console.log(chalk.cyan.bold('🔐 zjjauth - OAuth 凭据管理工具'));
     console.log();
     
     // 显示当前账号（如果有）

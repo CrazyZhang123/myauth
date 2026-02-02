@@ -1,4 +1,4 @@
-# 🔐 myauth - OAuth 凭据管理工具
+# 🔐 zjjauth - OAuth 凭据管理工具
 
 <div align="center">
 
@@ -33,23 +33,34 @@
 
 ## 🚀 快速开始
 
-### 方式一：从 GitHub 直接安装（推荐）
+### 方式一：使用 npx（推荐，无需安装）
 
 ```bash
-# 全局安装
-npm install -g CrazyZhang123/myauth
-
-# 运行
-myauth
+npx zjjauth
 ```
 
-### 方式二：从源码安装
+### 方式二：全局安装
+
+```bash
+npm install -g zjjauth
+zjjauth
+```
+
+### 方式三：从 GitHub 安装
+
+```bash
+npm install -g CrazyZhang123/myauth
+zjjauth
+```
+
+### 方式四：从源码安装
 
 ```bash
 git clone https://github.com/CrazyZhang123/myauth.git
 cd myauth
 npm install
 npm link
+zjjauth
 ```
 
 ### 配置代理（可选）
@@ -67,7 +78,7 @@ export HTTPS_PROXY=http://127.0.0.1:7890
 ### 启动主菜单
 
 ```bash
-myauth
+zjjauth
 ```
 
 就这么简单！🎉
@@ -78,10 +89,10 @@ myauth
 
 ### 方式一：交互式菜单（推荐新手）
 
-运行 `myauth` 进入主菜单：
+运行 `zjjauth` 进入主菜单：
 
 ```
-🔐 myauth - OAuth 凭据管理工具
+🔐 zjjauth - OAuth 凭据管理工具
 
 👤 当前账号: user@example.com (plus)
 
@@ -99,22 +110,22 @@ myauth
 
 ```bash
 # 首次配置
-myauth whoami
+zjjauth whoami
 
 # OAuth 登录
-myauth login
+zjjauth login
 
 # 查看凭据
-myauth ls
+zjjauth ls
 
 # 切换凭据
-myauth use 1
+zjjauth use 1
 
 # 快速切换
-myauth switch
+zjjauth switch
 
 # 删除凭据
-myauth delete 1
+zjjauth delete 1
 ```
 
 ---
@@ -124,8 +135,8 @@ myauth delete 1
 ### 🏠 主菜单
 
 ```bash
-myauth              # 显示主菜单
-myauth menu         # 显示主菜单（同上）
+zjjauth              # 显示主菜单
+zjjauth menu         # 显示主菜单（同上）
 ```
 
 **功能**: 交互式主菜单，适合新手使用
@@ -135,8 +146,8 @@ myauth menu         # 显示主菜单（同上）
 ### 🔄 快速切换
 
 ```bash
-myauth switch       # 快速切换凭据
-myauth s            # 简写
+zjjauth switch       # 快速切换凭据
+zjjauth s            # 简写
 ```
 
 **功能**: 显示所有账号并快速切换
@@ -160,7 +171,7 @@ myauth s            # 简写
 ### 🔑 OAuth 登录
 
 ```bash
-myauth login
+zjjauth login
 ```
 
 **流程**:
@@ -179,8 +190,8 @@ myauth login
 ### 📝 查看凭据
 
 ```bash
-myauth ls              # 列出所有凭据（自动刷新）
-myauth ls --csv out.csv # 导出为 CSV
+zjjauth ls              # 列出所有凭据（自动刷新）
+zjjauth ls --csv out.csv # 导出为 CSV
 ```
 
 **功能**: 
@@ -203,8 +214,8 @@ INDEX | PLAN  | SPACE          | EMAIL                          | TYPE
 ### 🔄 切换凭据
 
 ```bash
-myauth use 1              # 切换到第 1 个凭据（默认备份）
-myauth use 1 --no-backup  # 切换凭据（不备份）
+zjjauth use 1              # 切换到第 1 个凭据（默认备份）
+zjjauth use 1 --no-backup  # 切换凭据（不备份）
 ```
 
 **更新字段**:
@@ -224,8 +235,8 @@ myauth use 1 --no-backup  # 切换凭据（不备份）
 ### 🗑️ 删除凭据
 
 ```bash
-myauth delete 1     # 删除第 1 个凭据
-myauth rm 1         # 简写
+zjjauth delete 1     # 删除第 1 个凭据
+zjjauth rm 1         # 简写
 ```
 
 **功能**:
@@ -238,7 +249,7 @@ myauth rm 1         # 简写
 ### ⚙️ 配置管理
 
 ```bash
-myauth whoami
+zjjauth whoami
 ```
 
 **功能**:
@@ -246,7 +257,7 @@ myauth whoami
 - 已配置：显示当前配置和生效账号，可选择修改
 
 **配置项**:
-- `fromDir`: 凭据源目录（默认 `~/.myauth`）
+- `fromDir`: 凭据源目录（默认 `~/.zjjauth`）
 - `targetFile`: 目标配置文件（默认 `~/.codex/auth.json`）
 
 ---
@@ -254,7 +265,7 @@ myauth whoami
 ## 📁 目录结构
 
 ```
-~/.myauth/                              # OAuth 凭据目录
+~/.zjjauth/                              # OAuth 凭据目录
   ├── codex-plus-user@example.com.json
   ├── codex-team-myspace-user@example.com.json
   └── ...
@@ -262,7 +273,7 @@ myauth whoami
 ~/.codex/                               # Codex 配置目录
   └── auth.json                         # 目标配置文件
 
-~/.myauth/                              # myauth 配置目录
+~/.zjjauth/                              # zjjauth 配置目录
   ├── config.json                       # 工具配置
   ├── cache.json                        # 凭据缓存
   └── state.json                        # 当前状态
@@ -275,7 +286,7 @@ myauth whoami
 ### config.json
 ```json
 {
-  "fromDir": "~\\.myauth",
+  "fromDir": "~\\.zjjauth",
   "targetFile": "~\\.codex\\auth.json"
 }
 ```
@@ -332,21 +343,21 @@ taskkill /PID <PID> /F
 ```
 
 ### Q: 如何修改配置？
-**A**: 运行 `myauth whoami`，选择修改配置
+**A**: 运行 `zjjauth whoami`，选择修改配置
 
 ### Q: 如何导出凭据列表？
-**A**: 运行 `myauth ls --csv output.csv`
+**A**: 运行 `zjjauth ls --csv output.csv`
 
 ### Q: 配置文件保存在哪里？
-**A**: 所有配置保存在 `~/.myauth/` 目录
+**A**: 所有配置保存在 `~/.zjjauth/` 目录
 
 ### Q: 如何卸载？
 ```bash
-# 如果是全局安装
-npm uninstall -g myauth
+# 如果是 npm 安装
+npm uninstall -g zjjauth
 
 # 删除配置（可选）
-rm -rf ~/.myauth
+rm -rf ~/.zjjauth
 ```
 
 ---
@@ -377,7 +388,7 @@ rm -rf ~/.myauth
 
 ### 主菜单
 ```
-🔐 myauth - OAuth 凭据管理工具
+🔐 zjjauth - OAuth 凭据管理工具
 
 👤 当前账号: user@example.com (plus)
 
@@ -426,7 +437,7 @@ MIT License
 
 <div align="center">
 
-**[⬆ 回到顶部](#-myauth---oauth-凭据管理工具)**
+**[⬆ 回到顶部](#-zjjauth---oauth-凭据管理工具)**
 
 Made with ❤️ by [CrazyZhang123](https://github.com/CrazyZhang123)
 

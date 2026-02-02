@@ -105,7 +105,7 @@ export function exchangeCodeForTokens(code, codeVerifier) {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Content-Length': Buffer.byteLength(postData),
         'Accept': 'application/json',
-        'User-Agent': 'myauth/1.0.0'
+        'User-Agent': 'zjjauth/1.0.0'
       },
       timeout: 30000
     };

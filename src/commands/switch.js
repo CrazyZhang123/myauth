@@ -10,7 +10,7 @@ export async function switchMenu() {
   const config = loadConfig();
   
   if (!config) {
-    console.error(chalk.red('错误: 尚未配置，请先运行 myauth whoami'));
+    console.error(chalk.red('错误: 尚未配置，请先运行 zjjauth whoami'));
     await question(chalk.gray('\n按回车继续...'));
     return;
   }
@@ -19,7 +19,7 @@ export async function switchMenu() {
   
   if (cache.length === 0) {
     console.log(chalk.yellow('暂无可用凭据'));
-    console.log(chalk.gray('提示: 运行 myauth login 添加账号'));
+    console.log(chalk.gray('提示: 运行 zjjauth login 添加账号'));
     await question(chalk.gray('\n按回车继续...'));
     return;
   }

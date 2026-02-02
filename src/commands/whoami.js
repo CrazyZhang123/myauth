@@ -10,7 +10,7 @@ export async function whoami() {
 
   if (!config) {
     // 首次配置：交互式引导
-    console.log(chalk.cyan.bold('🎉 欢迎使用 myauth！') + chalk.gray('首次使用需要配置。\n'));
+    console.log(chalk.cyan.bold('🎉 欢迎使用 zjjauth！') + chalk.gray('首次使用需要配置。\n'));
     
     const defaults = getDefaultPaths();
     
@@ -22,7 +22,7 @@ export async function whoami() {
     
     if (!fs.existsSync(fromDir)) {
       console.error(chalk.red(`❌ 错误: 目录不存在: ${fromDir}`));
-      console.error(chalk.gray('💡 提示: 请先运行 myauth login 获取凭据'));
+      console.error(chalk.gray('💡 提示: 请先运行 zjjauth login 获取凭据'));
       process.exit(1);
     }
 

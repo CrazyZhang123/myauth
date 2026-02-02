@@ -8,7 +8,7 @@ export async function use(indexOrOptions, options = {}) {
   const config = loadConfig();
   
   if (!config) {
-    console.error(chalk.red('错误: 尚未配置，请先运行 myauth whoami'));
+    console.error(chalk.red('错误: 尚未配置，请先运行 zjjauth whoami'));
     process.exit(1);
   }
 
@@ -35,7 +35,7 @@ export async function use(indexOrOptions, options = {}) {
   
   if (!credential) {
     console.error(chalk.red(`错误: 未找到 index 为 ${targetIndex} 的凭据`));
-    console.error(chalk.gray('提示: 运行 myauth ls 查看可用凭据'));
+    console.error(chalk.gray('提示: 运行 zjjauth ls 查看可用凭据'));
     process.exit(1);
   }
 

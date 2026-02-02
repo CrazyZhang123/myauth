@@ -9,7 +9,7 @@ export async function ls(options = {}) {
   const config = loadConfig();
   
   if (!config) {
-    console.error(chalk.red('❌ 错误: 尚未配置，请先运行 myauth whoami'));
+    console.error(chalk.red('❌ 错误: 尚未配置，请先运行 zjjauth whoami'));
     process.exit(1);
   }
 
@@ -72,7 +72,7 @@ export async function ls(options = {}) {
     }
   } else {
     console.log(chalk.yellow('⚠️  暂无可用凭据'));
-    console.log(chalk.gray('💡 提示: 运行 myauth login 添加账号'));
+    console.log(chalk.gray('💡 提示: 运行 zjjauth login 添加账号'));
   }
 
   // 导出 CSV

@@ -129,7 +129,7 @@ export function saveCredential(saveDir, filename, credential) {
  * @returns {string}
  */
 export function getDefaultSaveDir() {
-  return path.join(os.homedir(), '.myauth');
+  return path.join(os.homedir(), '.zjjauth');
 }
 
 /**

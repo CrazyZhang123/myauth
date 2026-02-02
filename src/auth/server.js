@@ -14,7 +14,7 @@ const SUCCESS_HTML = `<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登录成功 - myauth</title>
+    <title>登录成功 - zjjauth</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -123,7 +123,7 @@ const ERROR_HTML = (error) => `<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>认证失败 - myauth</title>
+    <title>认证失败 - zjjauth</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {

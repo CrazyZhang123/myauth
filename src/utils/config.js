@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import os from 'os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CONFIG_DIR = path.join(os.homedir(), '.myauth');
+const CONFIG_DIR = path.join(os.homedir(), '.zjjauth');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const CACHE_FILE = path.join(CONFIG_DIR, 'cache.json');
 const STATE_FILE = path.join(CONFIG_DIR, 'state.json');

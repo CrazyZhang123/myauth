@@ -12,7 +12,7 @@ export async function deleteCredential(targetIndex) {
   const config = loadConfig();
   
   if (!config) {
-    console.error(chalk.red('错误: 尚未配置，请先运行 myauth whoami'));
+    console.error(chalk.red('错误: 尚未配置，请先运行 zjjauth whoami'));
     return false;
   }
 

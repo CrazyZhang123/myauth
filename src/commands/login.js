@@ -91,7 +91,7 @@ export async function login() {
     // 1. 获取配置的保存目录
     const config = loadConfig();
     if (!config) {
-      console.error(chalk.red('❌ 错误: 尚未配置，请先运行 myauth whoami'));
+      console.error(chalk.red('❌ 错误: 尚未配置，请先运行 zjjauth whoami'));
       process.exit(1);
     }
     
@@ -118,7 +118,7 @@ export async function login() {
     } catch (err) {
       console.error(chalk.red(`\n❌ 错误: ${err.message}`));
       if (err.message.includes('已被占用')) {
-        console.error(chalk.gray('💡 提示: 请关闭占用端口 1455 的程序，或检查是否有其他 myauth login 正在运行'));
+        console.error(chalk.gray('💡 提示: 请关闭占用端口 1455 的程序，或检查是否有其他 zjjauth login 正在运行'));
       }
       process.exit(1);
     }
@@ -232,7 +232,7 @@ export async function login() {
         console.log(chalk.green('✅ 缓存已更新\n'));
       }
     } catch (err) {
-      console.log(chalk.yellow('⚠️  缓存更新失败，请运行 myauth ls 手动刷新\n'));
+      console.log(chalk.yellow('⚠️  缓存更新失败，请运行 zjjauth ls 手动刷新\n'));
     }
 
     // 14. 输出摘要（严禁输出 token）

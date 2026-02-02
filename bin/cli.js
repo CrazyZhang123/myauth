@@ -12,22 +12,22 @@ import { deleteCredential } from '../src/commands/delete.js';
 const program = new Command();
 
 program
-  .name('myauth')
+  .name('zjjauth')
   .description('OAuth 凭据管理工具 - 支持多账号快速切换')
   .version('1.0.0')
   .addHelpText('after', `
 示例:
-  $ myauth                     显示主菜单（交互式）
-  $ myauth menu                显示主菜单
-  $ myauth switch              快速切换凭据
-  $ myauth login               OAuth 登录获取新凭据
-  $ myauth ls                  列出可用凭据（自动刷新）
-  $ myauth use 1               切换到第 1 个凭据
-  $ myauth delete 1            删除第 1 个凭据
-  $ myauth whoami              配置管理
+  $ zjjauth                     显示主菜单（交互式）
+  $ zjjauth menu                显示主菜单
+  $ zjjauth switch              快速切换凭据
+  $ zjjauth login               OAuth 登录获取新凭据
+  $ zjjauth ls                  列出可用凭据（自动刷新）
+  $ zjjauth use 1               切换到第 1 个凭据
+  $ zjjauth delete 1            删除第 1 个凭据
+  $ zjjauth whoami              配置管理
   
 默认路径:
-  凭据目录: ~/.myauth
+  凭据目录: ~/.zjjauth
   Codex 目标: ~/.codex/auth.json
   
 更多信息: https://github.com/CrazyZhang123/myauth

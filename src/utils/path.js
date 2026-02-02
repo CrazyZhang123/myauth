@@ -34,7 +34,7 @@ export function getDefaultPaths() {
   const homeDir = os.homedir();
   
   return {
-    oauthDir: path.join(homeDir, '.myauth'),  // OAuth 登录凭据目录
+    oauthDir: path.join(homeDir, '.zjjauth'),  // OAuth 登录凭据目录
     targetFile: path.join(homeDir, '.codex', 'auth.json')  // 目标配置文件
   };
 }
