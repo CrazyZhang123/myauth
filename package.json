@@ -1,6 +1,6 @@
 {
   "name": "zjjauth",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "OAuth 凭据管理工具 - 支持多账号快速切换的 CLI 工具",
   "main": "bin/cli.js",
   "type": "module",
