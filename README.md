@@ -1,57 +1,21 @@
-# myauth - 凭据切换 CLI 工具
+# myauth - OAuth 凭据管理工具
 
-基于 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 项目的凭据管理工具，用于在多个 CLI 凭据之间快速切换。
+基于 OAuth 2.0 + PKCE 的 Codex 凭据管理工具，用于在多个账号之间快速切换。
 
+## 特性
 
-## 预备条件
+- ✅ OAuth 2.0 + PKCE 安全认证
+- ✅ 支持 Plus 和 Team 订阅计划
+- ✅ 多账号管理与快速切换
+- ✅ 自动备份与原子写入
+- ✅ HTTPS 代理支持
+- ✅ 零 Token 泄露
 
-### 1. 获取凭证（两种方式）
-
-**方式 1: 直接使用 myauth login（推荐）**
-
-```bash
-myauth login
-```
-
-无需其他工具，直接通过 OAuth 登录获取凭据。
-
-**方式 2: 使用 CLIProxyAPI**
-
-使用 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 获取 Codex 的 OAuth 凭证：
-
-```bash
-# 克隆 CLIProxyAPI 项目
-git clone https://github.com/router-for-me/CLIProxyAPI.git
-cd CLIProxyAPI
-
-# 按照项目说明获取 OAuth 凭证
-# 凭证会保存到 ~/.cli-proxy-api/ 目录
-```
-
-### 2. 系统要求
+## 系统要求
 
 - **Node.js** >= 18
-- **Windows** 操作系统
-- **Git** 版本控制工具
-
-### 3. 目录结构
-
-工具会使用以下目录（跨平台统一路径）：
-
-```
-~/.cli-proxy-api/                       # CLI 凭证源目录（由 CLIProxyAPI 创建）
-~/.codex/auth.json                      # Codex 目标配置文件
-~/.myauth/                              # myauth 配置目录（自动创建）
-  ├── config.json                       # 工具配置
-  ├── cache.json                        # 凭据缓存
-  └── state.json                        # 当前状态
-```
-
-**路径说明**：
-- 支持使用 `~` 符号表示用户主目录
-- Windows: `~` = `C:\Users\{user}`
-- macOS: `~` = `/Users/{user}`
-- Linux: `~` = `/home/{user}`
+- **操作系统**: Windows / macOS / Linux
+- **代理工具**（中国大陆用户必需）: Clash / V2Ray 等
 
 ## 安装
 
@@ -64,19 +28,43 @@ npm link
 
 ## 快速开始
 
-### 方式 1: OAuth 登录（推荐）
-
-直接通过 OAuth 登录获取新凭据：
+### 方式一：交互式菜单（推荐新手）
 
 ```bash
-myauth login
+myauth
 ```
 
-按照交互式提示完成登录，凭据会自动保存到 `~/.myauth/` 目录。
+显示主菜单，按数字选择操作：
+```
+=== myauth - OAuth 凭据管理工具 ===
 
-### 方式 2: 使用现有凭据
+当前账号: user1@example.com (Plus)
 
-如果已有 CLIProxyAPI 生成的凭据，可以配置工具进行切换：
+--- 菜单选项 ---
+[1] 登录新账号
+[2] 快速切换凭据
+[3] 查看所有凭据
+[4] 查看当前账号
+[5] 刷新凭据列表
+[6] 配置管理
+[0] 退出
+
+请选择操作 (0-6):
+```
+
+### 方式二：命令行模式（推荐老手）
+
+#### 1. 设置代理（中国大陆用户必需）
+
+```powershell
+# Windows PowerShell
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"
+
+# Linux/macOS
+export HTTPS_PROXY=http://127.0.0.1:7890
+```
+
+#### 2. 首次配置
 
 ```bash
 myauth whoami
@@ -84,36 +72,35 @@ myauth whoami
 
 按提示输入配置信息（支持 `~` 路径符号）：
 
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| **fromDir** | `~/.cli-proxy-api` | CLI 凭证源目录 |
-| **targetFile** | `~/.codex/auth.json` | Codex 目标配置文件 |
-| **recursive** | `n` | 是否递归扫描子目录 |
+```
+欢迎使用 myauth！首次使用需要配置。
 
-**路径示例**：
+默认凭据目录: ~/.myauth
+默认目标文件: ~/.codex/auth.json
 
-```bash
-# 所有平台统一使用 ~ 符号
-fromDir: ~/.cli-proxy-api
-targetFile: ~/.codex/auth.json
+请输入凭据源目录路径 (默认: ~/.myauth): [回车使用默认]
+请输入目标 JSON 文件路径 (默认: ~/.codex/auth.json): [回车使用默认]
 
-# 或使用完整路径
-# Windows: C:\Users\ZJJ\.cli-proxy-api
-# macOS: /Users/zjj/.cli-proxy-api
-# Linux: /home/zjj/.cli-proxy-api
+✓ 配置已保存
+
+正在扫描凭据源...
+✓ 发现 0 个可用凭据源
 ```
 
-**快速配置**（使用默认值）：
+#### 3. OAuth 登录
 
 ```bash
-myauth whoami
-# 直接按回车使用默认路径
-请输入凭据源目录路径 (默认: ~/.cli-proxy-api): [回车]
-请输入目标 JSON 文件路径 (默认: ~/.codex/auth.json): [回车]
-是否递归扫描子目录？(y/N): n
+myauth login
 ```
 
-### 2. 查看可用凭据
+按提示完成登录：
+
+1. 选择订阅计划（Plus/Team）
+2. 输入 Team 空间名称（可选）
+3. 浏览器授权
+4. 完成登录
+
+#### 4. 查看凭据
 
 ```bash
 myauth ls
@@ -121,124 +108,143 @@ myauth ls
 
 输出示例：
 ```
-可用凭据源总数: 3
+可用凭据源总数: 2
 
-INDEX | EMAIL                          | TYPE
-------|--------------------------------|----------
-1     | user1@example.com              | codex
-2     | user2@example.com              | codex
-3     | user3@example.com              | codex
+INDEX | PLAN  | SPACE          | EMAIL                          | TYPE
+------|-------|----------------|--------------------------------|----------
+1     | plus  | -              | user1@example.com              | codex
+2     | team  | mycompany      | user2@example.com              | codex
 ```
 
-### 3. 切换凭据
+#### 5. 切换凭据
 
 ```bash
-myauth use --index 1
+myauth use 1              # 切换到第 1 个凭据
+myauth switch             # 或使用快速切换菜单
 ```
 
-### 4. 查看帮助
-
-```bash
-myauth --help
-myauth ls --help
-myauth use --help
-```
-
-## 命令说明
-
-### login - OAuth 登录（新功能）
-
-```bash
-myauth login
-```
-
-全交互式 OAuth 登录流程，自动获取并保存凭据。
-
-**特性**：
-- ✅ 支持 Plus 和 Team 订阅
-- ✅ 自动打开浏览器授权
-- ✅ 安全的 PKCE + State 验证
-- ✅ 自动更新缓存
-- ✅ 零 Token 泄露
-
-**详细使用说明**：参见 [OAUTH_LOGIN_USAGE.md](./OAUTH_LOGIN_USAGE.md)
-
-### whoami - 配置工具
+#### 6. 查看当前账号
 
 ```bash
 myauth whoami
 ```
 
-首次运行进入配置，已配置则显示当前状态。
+## 命令说明
 
-### ls - 列出凭据
+### 交互式命令
+
+#### myauth / myauth menu - 主菜单
 
 ```bash
-myauth ls              # 列出所有 codex 类型凭据
+myauth              # 显示主菜单
+myauth menu         # 显示主菜单（同上）
+```
+
+**功能**: 交互式主菜单，适合新手使用
+
+#### myauth switch - 快速切换
+
+```bash
+myauth switch       # 快速切换凭据
+myauth s            # 简写
+```
+
+**功能**: 快速切换凭据菜单，显示所有账号并选择切换
+
+### 命令行模式
+
+#### whoami - 配置管理
+
+```bash
+myauth whoami
+```
+
+**功能**:
+- 首次运行：交互式配置
+- 已配置：显示当前配置和生效账号，可选择修改
+
+#### login - OAuth 登录
+
+```bash
+myauth login
+```
+
+**流程**:
+1. 选择订阅计划（Plus/Team）
+2. 输入 Team 空间名称（可选）
+3. 浏览器授权
+4. 保存凭据文件
+
+**文件命名规则**:
+- Plus: `codex-plus-{email}.json`
+- Team (无空间): `codex-team-{email}.json`
+- Team (有空间): `codex-team-{space}-{email}.json`
+
+#### ls - 列出凭据
+
+```bash
+myauth ls              # 列出所有凭据
 myauth ls --refresh    # 强制重新扫描
 myauth ls --csv out.csv # 导出为 CSV
 ```
 
-### use - 切换凭据
+#### use - 切换凭据
 
 ```bash
-myauth use --index 1              # 切换凭据（默认备份）
-myauth use --index 1 --no-backup  # 切换凭据（不备份）
+myauth use 1              # 切换到第 1 个凭据（默认备份）
+myauth use 1 --no-backup  # 切换凭据（不备份）
 ```
 
-## 特性
+**更新字段**:
+- `tokens.id_token`
+- `tokens.access_token`
+- `tokens.account_id`
+- `last_refresh`
 
-- ✅ **OAuth 登录**：直接通过浏览器登录获取凭据（新功能）
-- ✅ **合并更新**：只替换目标 JSON 中对应字段，不覆盖其他配置
-- ✅ **类型过滤**：只读取和显示 `type` 为 `codex` 的凭据
-- ✅ **安全策略**：自动备份、原子写入、零 Token 泄露
-- ✅ **简单索引**：使用 1, 2, 3... 数字编号，易于记忆
+## 目录结构
 
-## 字段映射规则
+```
+~/.myauth/                              # OAuth 凭据目录
+  ├── codex-plus-user@example.com.json
+  ├── codex-team-myspace-user@example.com.json
+  └── ...
 
-### 允许写入的字段
+~/.codex/                               # Codex 配置目录
+  └── auth.json                         # 目标配置文件
 
-| 源字段 | 目标路径 |
-|--------|----------|
-| `id_token` | `tokens.id_token` |
-| `access_token` | `tokens.access_token` |
-| `account_id` | `tokens.account_id` |
-| `last_refresh` | `last_refresh` |
+~/.myauth/                              # myauth 配置目录
+  ├── config.json                       # 工具配置
+  ├── cache.json                        # 凭据缓存
+  └── state.json                        # 当前状态
+```
 
-### 禁止写入的字段
+## 配置文件格式
 
-- `email` - 仅用于展示
-- `type` - 仅用于过滤
-- `expired` - 仅用于识别
+### config.json
+```json
+{
+  "fromDir": "C:\\Users\\ZJJ\\.myauth",
+  "targetFile": "C:\\Users\\ZJJ\\.codex\\auth.json"
+}
+```
 
-### 合并规则
-
-- ✅ 只更新源 JSON 中存在的字段
-- ✅ 源缺失的字段不会覆盖目标
-- ✅ 目标 JSON 中的其他字段完全保留
-
-## 数据格式
-
-### 源 JSON（CLI 凭据）
-
-位置：`~/.cli-proxy-api/*.json`
-
+### OAuth 凭据文件
 ```json
 {
   "id_token": "eyJhbGc...",
   "access_token": "ya29.a0...",
+  "refresh_token": "...",
   "account_id": "12345",
-  "last_refresh": "2026-01-30T21:26:00+08:00",
   "email": "user@example.com",
   "type": "codex",
-  "expired": "2026-02-09T21:25:59+08:00"
+  "plan": "plus",
+  "team_space": "",
+  "last_refresh": "2026-01-31T12:00:00+08:00",
+  "expired": "2026-02-10T12:00:00+08:00"
 }
 ```
 
-### 目标 JSON（Codex 配置）
-
-位置：`~/.codex/auth.json`
-
+### 目标配置文件（auth.json）
 ```json
 {
   "tokens": {
@@ -255,39 +261,35 @@ myauth use --index 1 --no-backup  # 切换凭据（不备份）
 
 ## 常见问题
 
-### Q: 如何修改配置？
-
-```bash
-myauth whoami
-# 询问时选择 Y 进入修改模式
+### Q: OAuth 登录失败 "unsupported_country_region_territory"
+**A**: 需要设置 HTTPS 代理
+```powershell
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"
 ```
+
+### Q: 端口 1455 被占用
+**A**: 必须使用固定端口 1455（OpenAI 预先注册），请关闭占用该端口的程序
+```powershell
+# 查找占用端口的进程
+netstat -ano | findstr :1455
+
+# 结束进程
+taskkill /PID <PID> /F
+```
+
+### Q: 如何修改配置？
+**A**: 运行 `myauth whoami`，选择修改配置
 
 ### Q: 如何刷新凭据列表？
-
-```bash
-myauth ls --refresh
-```
+**A**: 运行 `myauth ls --refresh`
 
 ### Q: 如何导出凭据列表？
-
-```bash
-myauth ls --csv output.csv
-# 文件保存在当前目录，或指定完整路径
-```
-
-### Q: 为什么只显示部分凭据？
-
-工具只显示 `type` 为 `codex` 的凭据，其他类型会被过滤。
+**A**: 运行 `myauth ls --csv output.csv`
 
 ### Q: 配置文件保存在哪里？
-
-所有配置保存在 `~/.myauth/` 目录：
-- `config.json` - 工具配置
-- `cache.json` - 凭据缓存
-- `state.json` - 当前状态
+**A**: 所有配置保存在 `~/.myauth/` 目录
 
 ### Q: 如何卸载？
-
 ```bash
 npm unlink -g myauth
 rm -rf ~/.myauth  # 删除配置（可选）
@@ -299,16 +301,16 @@ rm -rf ~/.myauth  # 删除配置（可选）
 - ✅ 原子写入（临时文件 + rename）
 - ✅ 所有输出不包含 token
 - ✅ CSV 导出不包含 token
+- ✅ 固定端口 1455，仅监听 127.0.0.1
+- ✅ PKCE + state 防护
+- ⚠️ Windows 用户请确保凭据目录受到适当保护
 
 ## 技术栈
 
 - Node.js >= 18
 - commander - CLI 框架
 - fast-glob - 文件扫描
-
-## 相关项目
-
-- [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) - 本项目基于此项目
+- https-proxy-agent - HTTPS 代理支持
 
 ## 许可证
 

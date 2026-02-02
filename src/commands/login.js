@@ -3,6 +3,7 @@
  * 全交互式流程
  */
 
+import chalk from 'chalk';
 import { question, confirm } from '../utils/prompt.js';
 import { generatePKCE, generateState, generateAuthUrl, exchangeCodeForTokens, extractUserInfo } from '../auth/oauth.js';
 import { startCallbackServer } from '../auth/server.js';
@@ -45,72 +46,41 @@ function openBrowser(url) {
 
 /**
  * 交互式收集登录信息
- * @returns {Promise<{plan: string, teamSpace: string, saveDir: string}>}
+ * @returns {Promise<{plan: string, teamSpace: string}>}
  */
 async function collectLoginInfo() {
-  console.log('\n=== OAuth 登录配置 ===\n');
+  console.log('\n' + chalk.cyan.bold('🔐 OAuth 登录配置') + '\n');
 
   // 1. 选择 plan
-  console.log('请选择订阅计划:');
-  console.log('  [1] Plus');
-  console.log('  [2] Team');
+  console.log(chalk.white('请选择订阅计划:'));
+  console.log(chalk.white('  [1] Plus'));
+  console.log(chalk.white('  [2] Team'));
   
   let planChoice;
   while (true) {
-    planChoice = await question('\n请输入选项 (1/2): ');
+    planChoice = await question(chalk.cyan('\n请输入选项 (1/2): '));
     if (planChoice === '1' || planChoice === '2') {
       break;
     }
-    console.log('无效选项，请输入 1 或 2');
+    console.log(chalk.red('❌ 无效选项，请输入 1 或 2'));
   }
 
   const plan = planChoice === '1' ? 'plus' : 'team';
-  console.log(`✓ 已选择: ${plan}\n`);
+  console.log(chalk.green(`✅ 已选择: ${plan}\n`));
 
   // 2. 如果是 team，询问 team_space
   let teamSpace = '';
   if (plan === 'team') {
-    teamSpace = await question('请输入 Team 空间名称 (可留空): ');
+    teamSpace = await question(chalk.cyan('🏢 请输入 Team 空间名称 (可留空): '));
     teamSpace = teamSpace.trim();
     if (teamSpace) {
-      console.log(`✓ Team 空间: ${teamSpace}\n`);
+      console.log(chalk.green(`✅ Team 空间: ${teamSpace}\n`));
     } else {
-      console.log('✓ 未设置 Team 空间\n');
+      console.log(chalk.gray('✓ 未设置 Team 空间\n'));
     }
   }
 
-  // 3. 选择保存目录
-  const defaultDir = getDefaultSaveDir();
-  console.log(`默认保存目录: ${defaultDir}`);
-  
-  const useDefault = await confirm('使用默认目录？');
-  
-  let saveDir;
-  if (useDefault) {
-    saveDir = defaultDir;
-  } else {
-    while (true) {
-      saveDir = await question('请输入保存目录路径: ');
-      saveDir = saveDir.trim();
-      
-      if (!saveDir) {
-        console.log('路径不能为空');
-        continue;
-      }
-
-      const validation = validateSaveDir(saveDir);
-      if (!validation.valid) {
-        console.log(`错误: ${validation.error}`);
-        continue;
-      }
-
-      break;
-    }
-  }
-
-  console.log(`✓ 保存目录: ${saveDir}\n`);
-
-  return { plan, teamSpace, saveDir };
+  return { plan, teamSpace };
 }
 
 /**
@@ -118,16 +88,25 @@ async function collectLoginInfo() {
  */
 export async function login() {
   try {
-    // 1. 交互式收集信息
-    const { plan, teamSpace, saveDir } = await collectLoginInfo();
+    // 1. 获取配置的保存目录
+    const config = loadConfig();
+    if (!config) {
+      console.error(chalk.red('❌ 错误: 尚未配置，请先运行 myauth whoami'));
+      process.exit(1);
+    }
+    
+    const saveDir = config.fromDir;
 
-    // 2. 生成 PKCE 和 state
-    console.log('正在准备 OAuth 认证...');
+    // 2. 交互式收集信息
+    const { plan, teamSpace } = await collectLoginInfo();
+
+    // 3. 生成 PKCE 和 state
+    console.log(chalk.gray('🔐 正在准备 OAuth 认证...'));
     const { codeVerifier, codeChallenge } = generatePKCE();
     const state = generateState();
 
-    // 3. 启动本地回调服务器
-    console.log('正在启动本地回调服务器...');
+    // 4. 启动本地回调服务器
+    console.log(chalk.gray('🚀 正在启动本地回调服务器...'));
     let port, server, waitForCode;
     
     try {
@@ -135,66 +114,66 @@ export async function login() {
       port = result.port;
       server = result.server;
       waitForCode = result.waitForCode;
-      console.log(`✓ 回调服务器已启动 (端口: ${port})\n`);
+      console.log(chalk.green(`✅ 回调服务器已启动 (端口: ${port})\n`));
     } catch (err) {
-      console.error(`\n错误: ${err.message}`);
+      console.error(chalk.red(`\n❌ 错误: ${err.message}`));
       if (err.message.includes('已被占用')) {
-        console.error('提示: 请关闭占用端口 1455 的程序，或检查是否有其他 myauth login 正在运行');
+        console.error(chalk.gray('💡 提示: 请关闭占用端口 1455 的程序，或检查是否有其他 myauth login 正在运行'));
       }
       process.exit(1);
     }
 
-    // 4. 生成授权 URL
+    // 5. 生成授权 URL
     const authUrl = generateAuthUrl(state, codeChallenge);
 
-    // 5. 打开浏览器
-    console.log('正在打开浏览器进行授权...');
+    // 6. 打开浏览器
+    console.log(chalk.gray('🌐 正在打开浏览器进行授权...'));
     const browserOpened = await openBrowser(authUrl);
 
     if (!browserOpened) {
-      console.log('\n⚠ 无法自动打开浏览器，请手动访问以下 URL:\n');
+      console.log(chalk.yellow('\n⚠️  无法自动打开浏览器，请手动访问以下 URL:\n'));
     }
     
     // 始终显示 URL，方便用户复制
-    console.log(authUrl);
+    console.log(chalk.cyan(authUrl));
     console.log();
 
-    console.log('等待授权回调...');
+    console.log(chalk.gray('⏳ 等待授权回调...'));
     if (!browserOpened) {
-      console.log('(请复制上方 URL 到浏览器中打开)\n');
+      console.log(chalk.gray('💡 (请复制上方 URL 到浏览器中打开)\n'));
     } else {
-      console.log('(如果浏览器未正确跳转，请复制上方 URL)\n');
+      console.log(chalk.gray('💡 (如果浏览器未正确跳转，请复制上方 URL)\n'));
     }
 
-    // 6. 等待授权码
+    // 7. 等待授权码
     let code;
     try {
       code = await waitForCode();
-      console.log('✓ 已收到授权码\n');
+      console.log(chalk.green('✅ 已收到授权码\n'));
     } catch (err) {
       server.close();
-      console.error(`\n错误: ${err.message}`);
+      console.error(chalk.red(`\n❌ 错误: ${err.message}`));
       process.exit(1);
     }
 
-    // 7. 交换 tokens
-    console.log('正在交换 access token...');
+    // 8. 交换 tokens
+    console.log(chalk.gray('🔄 正在交换 access token...'));
     let tokens;
     
     try {
       tokens = await exchangeCodeForTokens(code, codeVerifier);
-      console.log('✓ Token 交换成功\n');
+      console.log(chalk.green('✅ Token 交换成功\n'));
     } catch (err) {
       server.close();
-      console.error(`\n错误: ${err.message}`);
+      console.error(chalk.red(`\n❌ 错误: ${err.message}`));
       process.exit(1);
     } finally {
       // 关闭服务器
       server.close();
     }
 
-    // 8. 提取用户信息
-    console.log('正在解析用户信息...');
+    // 9. 提取用户信息
+    console.log(chalk.gray('📋 正在解析用户信息...'));
     let userInfo;
     
     try {
@@ -208,17 +187,17 @@ export async function login() {
         throw new Error('无法从 ID Token 中提取账户 ID');
       }
 
-      console.log(`✓ 用户: ${userInfo.email}\n`);
+      console.log(chalk.green(`✅ 用户: ${userInfo.email}\n`));
     } catch (err) {
-      console.error(`\n错误: ${err.message}`);
+      console.error(chalk.red(`\n❌ 错误: ${err.message}`));
       process.exit(1);
     }
 
-    // 9. 生成文件名
+    // 10. 生成文件名
     const filename = generateCredentialFilename(userInfo.email, plan, teamSpace);
-    console.log(`文件名: ${filename}`);
+    console.log(chalk.gray(`📝 文件名: ${filename}`));
 
-    // 10. 创建凭据对象
+    // 11. 创建凭据对象
     const credential = createCredentialJson(
       tokens,
       userInfo.email,
@@ -227,67 +206,54 @@ export async function login() {
       teamSpace
     );
 
-    // 11. 保存文件
-    console.log('正在保存凭据...');
+    // 12. 保存文件
+    console.log(chalk.gray('💾 正在保存凭据...'));
     let savedPath;
     
     try {
       savedPath = saveCredential(saveDir, filename, credential);
-      console.log(`✓ 凭据已保存: ${savedPath}\n`);
+      console.log(chalk.green(`✅ 凭据已保存: ${savedPath}\n`));
     } catch (err) {
-      console.error(`\n错误: 保存失败 - ${err.message}`);
+      console.error(chalk.red(`\n❌ 错误: 保存失败 - ${err.message}`));
       process.exit(1);
     }
 
-    // 12. 更新缓存（如果已配置）
-    const config = loadConfig();
-    if (config && config.fromDir === saveDir) {
-      console.log('正在更新缓存...');
-      try {
-        const credentials = await scanCredentials(saveDir, config.recursive || false);
-        saveCache(credentials);
-        
-        // 找到刚保存的凭据的 index
-        const newCred = credentials.find(c => c.email === userInfo.email && c.path === filename);
-        if (newCred) {
-          console.log(`✓ 缓存已更新 (index: ${newCred.index})\n`);
-        } else {
-          console.log('✓ 缓存已更新\n');
-        }
-      } catch (err) {
-        console.log('⚠ 缓存更新失败，请运行 myauth ls --refresh 手动刷新\n');
-      }
-    }
-
-    // 13. 输出摘要（严禁输出 token）
-    console.log('=== 登录成功 ===');
-    console.log(`Email: ${userInfo.email}`);
-    console.log(`Type: codex`);
-    console.log(`Plan: ${plan}`);
-    if (plan === 'team' && teamSpace) {
-      console.log(`Team Space: ${teamSpace}`);
-    }
-    console.log(`File: ${savedPath}`);
-    
-    // 如果已配置且在同一目录，显示 index
-    if (config && config.fromDir === saveDir) {
-      const cache = await scanCredentials(saveDir, config.recursive || false);
-      const newCred = cache.find(c => c.email === userInfo.email && c.path === filename);
+    // 13. 更新缓存
+    console.log(chalk.gray('🔄 正在更新缓存...'));
+    try {
+      const credentials = await scanCredentials(saveDir);
+      saveCache(credentials);
+      
+      // 找到刚保存的凭据的 index
+      const newCred = credentials.find(c => c.email === userInfo.email && c.path === filename);
       if (newCred) {
-        console.log(`Index: ${newCred.index}`);
+        console.log(chalk.green(`✅ 缓存已更新 (index: ${newCred.index})\n`));
+      } else {
+        console.log(chalk.green('✅ 缓存已更新\n'));
       }
+    } catch (err) {
+      console.log(chalk.yellow('⚠️  缓存更新失败，请运行 myauth ls 手动刷新\n'));
     }
 
-    console.log('\n提示: 运行 myauth ls 查看所有凭据');
-    console.log('提示: 运行 myauth use --index <N> 切换到此凭据');
-
-    // Windows 安全提示
-    if (platform() === 'win32') {
-      console.log('\n⚠ 安全提示: 请确保凭据目录受到适当保护');
+    // 14. 输出摘要（严禁输出 token）
+    console.log(chalk.green.bold('✅ 登录成功'));
+    console.log(chalk.gray(`📧 Email: ${userInfo.email}`));
+    console.log(chalk.gray(`🏷️  Type: codex`));
+    console.log(chalk.gray(`📦 Plan: ${plan}`));
+    if (plan === 'team' && teamSpace) {
+      console.log(chalk.gray(`🏢 Team Space: ${teamSpace}`));
+    }
+    console.log(chalk.gray(`📁 File: ${savedPath}`));
+    
+    // 显示 index
+    const cache = await scanCredentials(saveDir);
+    const newCred = cache.find(c => c.email === userInfo.email && c.path === filename);
+    if (newCred) {
+      console.log(chalk.gray(`🔢 Index: ${newCred.index}`));
     }
 
   } catch (err) {
-    console.error(`\n未预期的错误: ${err.message}`);
+    console.error(chalk.red(`\n❌ 未预期的错误: ${err.message}`));
     process.exit(1);
   }
 }

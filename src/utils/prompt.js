@@ -19,8 +19,8 @@ export function question(prompt) {
   });
 }
 
-// 询问 Yes/No
+// 询问 Yes/No（不自动添加后缀，由调用者控制）
 export async function confirm(prompt) {
-  const answer = await question(`${prompt} (Y/N): `);
+  const answer = await question(prompt);
   return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
 }

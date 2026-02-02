@@ -80,12 +80,6 @@ export function generateAuthUrl(state, codeChallenge) {
  * @param {string} codeVerifier - PKCE verifier
  * @returns {Promise<{id_token: string, access_token: string, refresh_token: string, expires_in: number}>}
  */
-/**
- * 交换授权码获取 tokens
- * @param {string} code - 授权码
- * @param {string} codeVerifier - PKCE verifier
- * @returns {Promise<{id_token: string, access_token: string, refresh_token: string, expires_in: number}>}
- */
 export function exchangeCodeForTokens(code, codeVerifier) {
   return new Promise((resolve, reject) => {
     const postData = new URLSearchParams({
@@ -110,24 +104,20 @@ export function exchangeCodeForTokens(code, codeVerifier) {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Content-Length': Buffer.byteLength(postData),
-        'Accept': 'application/json'
-      }
+        'Accept': 'application/json',
+        'User-Agent': 'myauth/1.0.0'
+      },
+      timeout: 30000
     };
     
     // 如果有代理，使用代理
     if (proxy) {
-      options.agent = new HttpsProxyAgent(proxy);
-      console.log('[调试] 使用代理:', proxy);
-    } else {
-      console.log('[调试] 未检测到代理环境变量，使用直连');
-      console.log('[调试] 提示: 如需使用代理，请设置 HTTPS_PROXY 环境变量');
+      try {
+        options.agent = new HttpsProxyAgent(proxy);
+      } catch (err) {
+        // 代理配置失败，使用直连
+      }
     }
-
-    // 调试信息
-    console.log('\n[调试] Token 交换请求:');
-    console.log('URL:', OAUTH_CONFIG.tokenUrl);
-    console.log('Headers:', options.headers);
-    console.log('Body:', postData.substring(0, 200) + '...\n');
 
     const req = https.request(options, (res) => {
       let data = '';
@@ -137,9 +127,6 @@ export function exchangeCodeForTokens(code, codeVerifier) {
       });
 
       res.on('end', () => {
-        console.log('[调试] 响应状态码:', res.statusCode);
-        console.log('[调试] 响应内容:', data.substring(0, 500));
-        
         if (res.statusCode !== 200) {
           try {
             const error = JSON.parse(data);
@@ -155,14 +142,27 @@ export function exchangeCodeForTokens(code, codeVerifier) {
           const tokens = JSON.parse(data);
           resolve(tokens);
         } catch (err) {
-          reject(new Error(`解析 token 响应失败: ${err.message}\n响应内容: ${data}`));
+          reject(new Error(`解析 token 响应失败: ${err.message}`));
         }
       });
     });
 
     req.on('error', (err) => {
-      console.error('[调试] 请求错误:', err);
-      reject(new Error(`Token 请求失败: ${err.message}`));
+      // 提供更友好的错误提示
+      if (err.code === 'ECONNRESET') {
+        reject(new Error('连接被重置，可能是代理配置问题。请检查:\n1. 代理是否正常运行\n2. 代理端口是否正确\n3. 尝试重启代理软件'));
+      } else if (err.code === 'ETIMEDOUT') {
+        reject(new Error('连接超时，请检查网络和代理设置'));
+      } else if (err.code === 'ENOTFOUND') {
+        reject(new Error('无法解析域名，请检查网络连接'));
+      } else {
+        reject(new Error(`Token 请求失败: ${err.message}`));
+      }
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('请求超时（30秒），请检查网络连接'));
     });
 
     req.write(postData);

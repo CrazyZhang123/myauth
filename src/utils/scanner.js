@@ -2,9 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import fg from 'fast-glob';
 
-// 扫描目录中的 JSON 文件
-export async function scanCredentials(fromDir, recursive = false) {
-  const pattern = recursive ? '**/*.json' : '*.json';
+/**
+ * 扫描目录中的 JSON 文件
+ * @param {string} fromDir - 扫描目录
+ * @returns {Promise<Array>} 凭据列表
+ */
+export async function scanCredentials(fromDir) {
+  const pattern = '*.json';
   const files = await fg(pattern, {
     cwd: fromDir,
     absolute: false,
