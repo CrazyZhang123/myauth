@@ -50,7 +50,7 @@ export async function menu() {
     console.log(chalk.white('[1] 🔑 登录/添加账号'));
     console.log(chalk.white('[2] 🔄 切换当前凭据（快速切换）'));
     console.log(chalk.white('[3] 📝 查看所有凭据'));
-    console.log(chalk.white('[4] ⚙️  配置管理'));
+    console.log(chalk.white('[4] ⚙️ 配置管理'));
     console.log(chalk.white('[0] 👋 退出'));
     console.log();
     

@@ -47,7 +47,7 @@ export async function whoami() {
   }
 
   // 已有配置：显示摘要并询问是否修改
-  console.log(chalk.cyan.bold('⚙️  当前配置'));
+  console.log(chalk.cyan.bold('⚙️ 当前配置'));
   console.log(chalk.gray(`📁 fromDir: ${formatPath(config.fromDir)}`));
   console.log(chalk.gray(`📄 targetFile: ${formatPath(config.targetFile)}`));
   console.log();
