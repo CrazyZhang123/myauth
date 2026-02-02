@@ -4,6 +4,7 @@ import { question, confirm } from '../utils/prompt.js';
 import { scanCredentials } from '../utils/scanner.js';
 import { resolvePath, getDefaultPaths, formatPath } from '../utils/path.js';
 import fs from 'fs';
+import path from 'path';
 
 export async function whoami() {
   const config = loadConfig();
@@ -20,14 +21,19 @@ export async function whoami() {
     const fromDirInput = await question(chalk.cyan(`请输入凭据源目录路径 (默认: ${formatPath(defaults.oauthDir)}): `));
     const fromDir = resolvePath(fromDirInput || defaults.oauthDir);
     
+    // 自动创建目录（如果不存在）
     if (!fs.existsSync(fromDir)) {
-      console.error(chalk.red(`❌ 错误: 目录不存在: ${fromDir}`));
-      console.error(chalk.gray('💡 提示: 请先运行 zjjauth login 获取凭据'));
-      process.exit(1);
+      fs.mkdirSync(fromDir, { recursive: true });
     }
 
     const targetFileInput = await question(chalk.cyan(`请输入目标 JSON 文件路径 (默认: ${formatPath(defaults.targetFile)}): `));
     const targetFile = resolvePath(targetFileInput || defaults.targetFile);
+    
+    // 自动创建目标文件的父目录
+    const targetDir = path.dirname(targetFile);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
 
     // 保存配置
     const newConfig = { 
@@ -97,10 +103,14 @@ export async function whoami() {
       targetFile: resolvePath(targetFileInput || config.targetFile)
     };
 
-    // 验证路径
+    // 自动创建目录（如果不存在）
     if (!fs.existsSync(newConfig.fromDir)) {
-      console.error(chalk.red(`\n❌ 错误: fromDir 不存在: ${newConfig.fromDir}`));
-      process.exit(1);
+      fs.mkdirSync(newConfig.fromDir, { recursive: true });
+    }
+    
+    const targetDir = path.dirname(newConfig.targetFile);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
     }
 
     saveConfig(newConfig);
