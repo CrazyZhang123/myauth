@@ -1,8 +1,8 @@
 {
-  "name": "myauth",
+  "name": "@crazyzhang123/myauth",
   "version": "1.0.0",
-  "description": "凭据切换 CLI 工具 - 在多个凭据 JSON 之间切换，支持合并更新",
-  "main": "index.js",
+  "description": "OAuth 凭据管理工具 - 支持多账号快速切换的 CLI 工具",
+  "main": "bin/cli.js",
   "type": "module",
   "bin": {
     "myauth": "./bin/cli.js"
@@ -11,27 +11,30 @@
     "start": "node bin/cli.js"
   },
   "keywords": [
+    "oauth",
     "auth",
     "credentials",
     "cli",
     "token",
     "switch",
     "config",
-    "codex"
+    "codex",
+    "pkce",
+    "multi-account"
   ],
-  "author": "",
+  "author": "CrazyZhang123",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_USERNAME/myauth.git"
+    "url": "https://github.com/CrazyZhang123/myauth.git"
   },
   "bugs": {
-    "url": "https://github.com/YOUR_USERNAME/myauth/issues"
+    "url": "https://github.com/CrazyZhang123/myauth/issues"
   },
-  "homepage": "https://github.com/YOUR_USERNAME/myauth#readme",
+  "homepage": "https://github.com/CrazyZhang123/myauth#readme",
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.0.0",

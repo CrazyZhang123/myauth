@@ -29,11 +29,24 @@
 
 - **Node.js** >= 18.0.0
 - **操作系统**: Windows / macOS / Linux
-- **代理工具**（中国大陆用户）: Clash / V2Ray 等
+- **网络**: 需要访问 OpenAI API（建议使用代理）
 
 ## 🚀 快速开始
 
-### 1. 安装
+### 方式一：使用 npx（推荐，无需安装）
+
+```bash
+npx @crazyzhang123/myauth
+```
+
+### 方式二：全局安装
+
+```bash
+npm install -g @crazyzhang123/myauth
+myauth
+```
+
+### 方式三：从源码安装
 
 ```bash
 git clone https://github.com/CrazyZhang123/myauth.git
@@ -42,7 +55,9 @@ npm install
 npm link
 ```
 
-### 2. 设置代理（中国大陆用户必需）
+### 配置代理（可选）
+
+如果你的网络无法直接访问 OpenAI API，需要设置代理：
 
 ```powershell
 # Windows PowerShell
@@ -52,10 +67,12 @@ $env:HTTPS_PROXY = "http://127.0.0.1:7890"
 export HTTPS_PROXY=http://127.0.0.1:7890
 ```
 
-### 3. 启动主菜单
+### 启动主菜单
 
 ```bash
 myauth
+# 或使用 npx
+npx @crazyzhang123/myauth
 ```
 
 就这么简单！🎉
@@ -304,7 +321,7 @@ myauth whoami
 ## ❓ 常见问题
 
 ### Q: OAuth 登录失败 "unsupported_country_region_territory"
-**A**: 需要设置 HTTPS 代理
+**A**: 需要设置 HTTPS 代理（某些地区可能无法直接访问 OpenAI API）
 ```powershell
 $env:HTTPS_PROXY = "http://127.0.0.1:7890"
 ```
@@ -330,8 +347,14 @@ taskkill /PID <PID> /F
 
 ### Q: 如何卸载？
 ```bash
+# 如果是全局安装
+npm uninstall -g @crazyzhang123/myauth
+
+# 如果是从源码安装
 npm unlink -g myauth
-rm -rf ~/.myauth  # 删除配置（可选）
+
+# 删除配置（可选）
+rm -rf ~/.myauth
 ```
 
 ---
