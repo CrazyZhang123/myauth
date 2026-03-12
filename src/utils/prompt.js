@@ -19,6 +19,12 @@ export function question(prompt) {
   });
 }
 
+// 判断是否为返回主菜单命令
+export function isBackCommand(answer) {
+  const normalized = String(answer || '').trim().toLowerCase();
+  return normalized === 'b' || normalized === 'back';
+}
+
 // 询问 Yes/No（不自动添加后缀，由调用者控制）
 export async function confirm(prompt) {
   const answer = await question(prompt);

@@ -1,12 +1,29 @@
 import chalk from 'chalk';
 import { loadConfig, saveConfig, loadCache, saveCache, loadState } from '../utils/config.js';
-import { question, confirm } from '../utils/prompt.js';
+import { question, isBackCommand } from '../utils/prompt.js';
 import { scanCredentials } from '../utils/scanner.js';
 import { resolvePath, getDefaultPaths, formatPath } from '../utils/path.js';
+import { printMenuPageHeader } from '../utils/ui.js';
 import fs from 'fs';
 import path from 'path';
 
+async function askBoolean(prompt, defaultValue) {
+  const answer = (await question(prompt)).trim().toLowerCase();
+
+  if (isBackCommand(answer)) {
+    return null;
+  }
+
+  if (!answer) {
+    return defaultValue;
+  }
+
+  return answer === 'y' || answer === 'yes';
+}
+
 export async function whoami() {
+  console.clear();
+  printMenuPageHeader('3', '配置管理');
   const config = loadConfig();
 
   if (!config) {
@@ -18,7 +35,10 @@ export async function whoami() {
     console.log(chalk.gray(`📁 默认凭据目录: ${formatPath(defaults.oauthDir)}`));
     console.log(chalk.gray(`📄 默认目标文件: ${formatPath(defaults.targetFile)}\n`));
     
-    const fromDirInput = await question(chalk.cyan(`请输入凭据源目录路径 (默认: ${formatPath(defaults.oauthDir)}): `));
+    const fromDirInput = await question(chalk.cyan(`请输入凭据源目录路径 (默认: ${formatPath(defaults.oauthDir)}，b 返回): `));
+    if (isBackCommand(fromDirInput)) {
+      return 'back';
+    }
     const fromDir = resolvePath(fromDirInput || defaults.oauthDir);
     
     // 自动创建目录（如果不存在）
@@ -26,8 +46,18 @@ export async function whoami() {
       fs.mkdirSync(fromDir, { recursive: true });
     }
 
-    const targetFileInput = await question(chalk.cyan(`请输入目标 JSON 文件路径 (默认: ${formatPath(defaults.targetFile)}): `));
+    const targetFileInput = await question(chalk.cyan(`请输入目标 JSON 文件路径 (默认: ${formatPath(defaults.targetFile)}，b 返回): `));
+    if (isBackCommand(targetFileInput)) {
+      return 'back';
+    }
     const targetFile = resolvePath(targetFileInput || defaults.targetFile);
+    const autoSwitchOnQuotaExhaustion = await askBoolean(
+      chalk.cyan('5H/周限额耗尽后自动切换账号？ [Y/n，b 返回]: '),
+      true
+    );
+    if (autoSwitchOnQuotaExhaustion == null) {
+      return 'back';
+    }
     
     // 自动创建目标文件的父目录
     const targetDir = path.dirname(targetFile);
@@ -38,7 +68,8 @@ export async function whoami() {
     // 保存配置
     const newConfig = { 
       fromDir, 
-      targetFile
+      targetFile,
+      autoSwitchOnQuotaExhaustion
     };
     saveConfig(newConfig);
     console.log(chalk.green('\n✅ 配置已保存\n'));
@@ -49,13 +80,14 @@ export async function whoami() {
     saveCache(credentials);
     console.log(chalk.cyan(`✅ 发现 ${credentials.length} 个可用凭据源\n`));
     
-    return;
+    return 'done';
   }
 
   // 已有配置：显示摘要并询问是否修改
   console.log(chalk.cyan.bold('⚙️ 当前配置'));
   console.log(chalk.gray(`📁 fromDir: ${formatPath(config.fromDir)}`));
   console.log(chalk.gray(`📄 targetFile: ${formatPath(config.targetFile)}`));
+  console.log(chalk.gray(`🔄 自动切号: ${config.autoSwitchOnQuotaExhaustion ? '开启' : '关闭'}`));
   console.log();
 
   // 显示当前生效账号
@@ -88,19 +120,37 @@ export async function whoami() {
   console.log();
 
   // 询问是否修改配置
-  const shouldModify = await confirm(chalk.cyan('是否需要修改配置？ (y/n): '));
+  const modifyAnswer = await question(chalk.cyan('是否需要修改配置？ (y/n，b 返回): '));
+  if (isBackCommand(modifyAnswer)) {
+    return 'back';
+  }
+  const shouldModify = modifyAnswer.toLowerCase() === 'y' || modifyAnswer.toLowerCase() === 'yes';
   
   if (shouldModify) {
     console.log(chalk.gray('\n请输入新配置（直接回车保持原值）:\n'));
     
-    const fromDirInput = await question(chalk.cyan(`📁 fromDir [${formatPath(config.fromDir)}]: `));
+    const fromDirInput = await question(chalk.cyan(`📁 fromDir [${formatPath(config.fromDir)}，b 返回]: `));
+    if (isBackCommand(fromDirInput)) {
+      return 'back';
+    }
     const newFromDir = resolvePath(fromDirInput || config.fromDir);
     
-    const targetFileInput = await question(chalk.cyan(`📄 targetFile [${formatPath(config.targetFile)}]: `));
+    const targetFileInput = await question(chalk.cyan(`📄 targetFile [${formatPath(config.targetFile)}，b 返回]: `));
+    if (isBackCommand(targetFileInput)) {
+      return 'back';
+    }
+    const autoSwitchOnQuotaExhaustion = await askBoolean(
+      chalk.cyan(`🔄 5H/周限额耗尽后自动切换账号 [${config.autoSwitchOnQuotaExhaustion ? 'Y/n' : 'y/N'}，b 返回]: `),
+      config.autoSwitchOnQuotaExhaustion
+    );
+    if (autoSwitchOnQuotaExhaustion == null) {
+      return 'back';
+    }
     
     const newConfig = {
       fromDir: newFromDir,
-      targetFile: resolvePath(targetFileInput || config.targetFile)
+      targetFile: resolvePath(targetFileInput || config.targetFile),
+      autoSwitchOnQuotaExhaustion
     };
 
     // 自动创建目录（如果不存在）
@@ -122,4 +172,6 @@ export async function whoami() {
     saveCache(credentials);
     console.log(chalk.cyan(`✅ 发现 ${credentials.length} 个可用凭据源\n`));
   }
+
+  return 'done';
 }

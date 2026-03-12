@@ -1,13 +1,40 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import os from 'os';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONFIG_DIR = path.join(os.homedir(), '.zjjauth');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const CACHE_FILE = path.join(CONFIG_DIR, 'cache.json');
 const STATE_FILE = path.join(CONFIG_DIR, 'state.json');
+const LIMITS_FILE = path.join(CONFIG_DIR, 'limits.json');
+const DEFAULT_CONFIG = Object.freeze({
+  fromDir: CONFIG_DIR,
+  targetFile: path.join(os.homedir(), '.codex', 'auth.json')
+});
+
+function normalizeConfig(config) {
+  const nextConfig = (config && typeof config === 'object') ? config : {};
+  return {
+    fromDir: nextConfig.fromDir || DEFAULT_CONFIG.fromDir,
+    targetFile: nextConfig.targetFile || DEFAULT_CONFIG.targetFile
+  };
+}
+
+function normalizeState(state) {
+  if (!state || typeof state !== 'object') {
+    return null;
+  }
+
+  const recentIndexes = Array.isArray(state.recent_indexes)
+    ? [...new Set(state.recent_indexes.filter((index) => typeof index === 'string' && index))]
+    : [];
+
+  return {
+    current_index: state.current_index || null,
+    updated_at: state.updated_at || null,
+    recent_indexes: recentIndexes.slice(0, 3)
+  };
+}
 
 // 确保配置目录存在
 function ensureConfigDir() {
@@ -16,23 +43,49 @@ function ensureConfigDir() {
   }
 }
 
+function ensureParentDir(filePath) {
+  const parentDir = path.dirname(filePath);
+  if (!fs.existsSync(parentDir)) {
+    fs.mkdirSync(parentDir, { recursive: true });
+  }
+}
+
+export function getDefaultConfig() {
+  return { ...DEFAULT_CONFIG };
+}
+
+export function getConfigPaths() {
+  return {
+    configDir: CONFIG_DIR,
+    configFile: CONFIG_FILE,
+    cacheFile: CACHE_FILE,
+    stateFile: STATE_FILE,
+    limitsFile: LIMITS_FILE
+  };
+}
+
+export function ensureRuntimeDirs() {
+  ensureConfigDir();
+  ensureParentDir(DEFAULT_CONFIG.targetFile);
+}
+
 // 读取配置
 export function loadConfig() {
   try {
     if (!fs.existsSync(CONFIG_FILE)) {
-      return null;
+      return getDefaultConfig();
     }
     const data = fs.readFileSync(CONFIG_FILE, 'utf-8');
-    return JSON.parse(data);
+    return normalizeConfig(JSON.parse(data));
   } catch (err) {
-    return null;
+    return getDefaultConfig();
   }
 }
 
 // 保存配置
 export function saveConfig(config) {
   ensureConfigDir();
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(normalizeConfig(config), null, 2), 'utf-8');
 }
 
 // 读取缓存
@@ -61,7 +114,7 @@ export function loadState() {
       return null;
     }
     const data = fs.readFileSync(STATE_FILE, 'utf-8');
-    return JSON.parse(data);
+    return normalizeState(JSON.parse(data));
   } catch (err) {
     return null;
   }
@@ -70,5 +123,24 @@ export function loadState() {
 // 保存状态
 export function saveState(state) {
   ensureConfigDir();
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf-8');
+  fs.writeFileSync(STATE_FILE, JSON.stringify(normalizeState(state), null, 2), 'utf-8');
+}
+
+// 读取限额缓存
+export function loadLimitCache() {
+  try {
+    if (!fs.existsSync(LIMITS_FILE)) {
+      return {};
+    }
+    const data = fs.readFileSync(LIMITS_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch (err) {
+    return {};
+  }
+}
+
+// 保存限额缓存
+export function saveLimitCache(limitCache) {
+  ensureConfigDir();
+  fs.writeFileSync(LIMITS_FILE, JSON.stringify(limitCache, null, 2), 'utf-8');
 }

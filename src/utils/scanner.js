@@ -47,8 +47,10 @@ export async function scanCredentials(fromDir) {
         team_space: json.team_space || null,
         id_token: json.id_token || null,
         access_token: json.access_token || null,
+        refresh_token: json.refresh_token || null,
         account_id: json.account_id || null,
-        last_refresh: json.last_refresh || null
+        last_refresh: json.last_refresh || null,
+        expired: json.expired ?? null
       };
 
       results.push(item);

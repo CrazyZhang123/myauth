@@ -22,12 +22,23 @@ export function updateTargetJson(targetPath, sourceData, enableBackup = true) {
     const content = fs.readFileSync(targetPath, 'utf-8');
     targetJson = JSON.parse(content);
   } catch (err) {
-    throw new Error(`无法读取目标文件: ${err.message}`);
+    if (err.code !== 'ENOENT') {
+      throw new Error(`无法读取目标文件: ${err.message}`);
+    }
+
+    const targetDir = path.dirname(targetPath);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    targetJson = {
+      tokens: {}
+    };
   }
 
   // 备份
   let backupPath = null;
-  if (enableBackup) {
+  if (enableBackup && fs.existsSync(targetPath)) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     backupPath = `${targetPath}.${timestamp}.bak`;
     fs.copyFileSync(targetPath, backupPath);
@@ -37,6 +48,7 @@ export function updateTargetJson(targetPath, sourceData, enableBackup = true) {
   const fieldMapping = [
     { source: 'id_token', target: ['tokens', 'id_token'] },
     { source: 'access_token', target: ['tokens', 'access_token'] },
+    { source: 'refresh_token', target: ['tokens', 'refresh_token'] },
     { source: 'account_id', target: ['tokens', 'account_id'] },
     { source: 'last_refresh', target: ['last_refresh'] }
   ];

@@ -1,6 +1,7 @@
 import chalk from 'chalk';
-import { loadConfig, loadCache, saveCache, loadState, saveState } from '../utils/config.js';
+import { loadConfig, loadCache, saveCache, loadState, saveState, loadLimitCache, saveLimitCache } from '../utils/config.js';
 import { scanCredentials } from '../utils/scanner.js';
+import { removeCredentialLimit } from '../utils/limits.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -10,11 +11,6 @@ import fs from 'fs';
  */
 export async function deleteCredential(targetIndex) {
   const config = loadConfig();
-  
-  if (!config) {
-    console.error(chalk.red('错误: 尚未配置，请先运行 zjjauth whoami'));
-    return false;
-  }
 
   const cache = loadCache();
   
@@ -40,19 +36,31 @@ export async function deleteCredential(targetIndex) {
     fs.unlinkSync(filePath);
     console.log(chalk.green(`✅ 已删除凭据: ${credential.email}`));
     
-    // 如果删除的是当前账号，清除状态
     const state = loadState();
+    const recentIndexes = (state?.recent_indexes || []).filter((index) => index !== targetIndex);
+
+    // 如果删除的是当前账号，清除状态
     if (state?.current_index === targetIndex) {
       saveState({
         current_index: null,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        recent_indexes: recentIndexes
       });
       console.log(chalk.yellow('⚠️  提示: 已清除当前账号状态'));
+    } else if (state && recentIndexes.length !== (state.recent_indexes || []).length) {
+      saveState({
+        ...state,
+        recent_indexes: recentIndexes
+      });
     }
     
     // 刷新缓存
     const newCache = await scanCredentials(config.fromDir);
     saveCache(newCache);
+
+    // 清理限额缓存
+    const limitCache = loadLimitCache();
+    saveLimitCache(removeCredentialLimit(limitCache, credential.path));
     
     return true;
   } catch (err) {

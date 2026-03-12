@@ -4,12 +4,13 @@
  */
 
 import chalk from 'chalk';
-import { question, confirm } from '../utils/prompt.js';
+import { question, isBackCommand } from '../utils/prompt.js';
 import { generatePKCE, generateState, generateAuthUrl, exchangeCodeForTokens, extractUserInfo } from '../auth/oauth.js';
 import { startCallbackServer } from '../auth/server.js';
-import { generateCredentialFilename, createCredentialJson, saveCredential, getDefaultSaveDir, validateSaveDir } from '../auth/storage.js';
+import { generateCredentialFilename, createCredentialJson, saveCredential } from '../auth/storage.js';
 import { scanCredentials } from '../utils/scanner.js';
-import { loadConfig, saveCache } from '../utils/config.js';
+import { ensureRuntimeDirs, loadConfig, saveCache } from '../utils/config.js';
+import { printMenuPageHeader } from '../utils/ui.js';
 import { exec } from 'child_process';
 import { platform } from 'os';
 
@@ -49,7 +50,9 @@ function openBrowser(url) {
  * @returns {Promise<{plan: string, teamSpace: string}>}
  */
 async function collectLoginInfo() {
-  console.log('\n' + chalk.cyan.bold('🔐 OAuth 登录配置') + '\n');
+  printMenuPageHeader('1', '登录帐号');
+  console.log(chalk.cyan.bold('🔐 OAuth 登录配置'));
+  console.log();
 
   // 1. 选择 plan
   console.log(chalk.white('请选择订阅计划:'));
@@ -58,7 +61,10 @@ async function collectLoginInfo() {
   
   let planChoice;
   while (true) {
-    planChoice = await question(chalk.cyan('\n请输入选项 (1/2): '));
+    planChoice = await question(chalk.cyan('\n请输入选项 (1/2，b 返回): '));
+    if (isBackCommand(planChoice)) {
+      return null;
+    }
     if (planChoice === '1' || planChoice === '2') {
       break;
     }
@@ -71,7 +77,10 @@ async function collectLoginInfo() {
   // 2. 如果是 team，询问 team_space
   let teamSpace = '';
   if (plan === 'team') {
-    teamSpace = await question(chalk.cyan('🏢 请输入 Team 空间名称 (可留空): '));
+    teamSpace = await question(chalk.cyan('🏢 请输入 Team 空间名称 (可留空，b 返回): '));
+    if (isBackCommand(teamSpace)) {
+      return null;
+    }
     teamSpace = teamSpace.trim();
     if (teamSpace) {
       console.log(chalk.green(`✅ Team 空间: ${teamSpace}\n`));
@@ -88,17 +97,18 @@ async function collectLoginInfo() {
  */
 export async function login() {
   try {
-    // 1. 获取配置的保存目录
+    console.clear();
+
+    ensureRuntimeDirs();
     const config = loadConfig();
-    if (!config) {
-      console.error(chalk.red('❌ 错误: 尚未配置，请先运行 zjjauth whoami'));
-      process.exit(1);
-    }
-    
     const saveDir = config.fromDir;
 
     // 2. 交互式收集信息
-    const { plan, teamSpace } = await collectLoginInfo();
+    const loginInfo = await collectLoginInfo();
+    if (!loginInfo) {
+      return 'back';
+    }
+    const { plan, teamSpace } = loginInfo;
 
     // 3. 生成 PKCE 和 state
     console.log(chalk.gray('🔐 正在准备 OAuth 认证...'));
@@ -232,7 +242,7 @@ export async function login() {
         console.log(chalk.green('✅ 缓存已更新\n'));
       }
     } catch (err) {
-      console.log(chalk.yellow('⚠️  缓存更新失败，请运行 zjjauth ls 手动刷新\n'));
+      console.log(chalk.yellow('⚠️  缓存更新失败，请稍后重新打开帐号池\n'));
     }
 
     // 14. 输出摘要（严禁输出 token）
@@ -251,6 +261,8 @@ export async function login() {
     if (newCred) {
       console.log(chalk.gray(`🔢 Index: ${newCred.index}`));
     }
+
+    return 'done';
 
   } catch (err) {
     console.error(chalk.red(`\n❌ 未预期的错误: ${err.message}`));
