@@ -3,7 +3,12 @@ import { loadConfig, saveConfig, loadCache, saveCache, loadState } from '../util
 import { question, isBackCommand } from '../utils/prompt.js';
 import { scanCredentials } from '../utils/scanner.js';
 import { resolvePath, getDefaultPaths, formatPath } from '../utils/path.js';
-import { applyProxyConfig } from '../utils/proxy.js';
+import {
+  applyProxyConfig,
+  buildProxyEnablePrompt,
+  buildProxyPortPrompt,
+  printProxyPortHint
+} from '../utils/proxy.js';
 import { printMenuPageHeader } from '../utils/ui.js';
 import fs from 'fs';
 import path from 'path';
@@ -34,7 +39,7 @@ async function askBoolean(prompt, defaultValue) {
 
 async function askProxyConfig(config) {
   const proxyEnabled = await askBoolean(
-    chalk.cyan(`🌐 是否启用本地代理 [${config.proxyEnabled ? 'Y/n' : 'y/N'}，b 返回]: `),
+    chalk.cyan(buildProxyEnablePrompt(config.proxyEnabled, true)),
     config.proxyEnabled
   );
   if (proxyEnabled == null) {
@@ -51,8 +56,9 @@ async function askProxyConfig(config) {
     return nextProxy;
   }
 
+  printProxyPortHint();
   while (true) {
-    const portInput = await question(chalk.cyan(`🔌 代理端口 [${nextProxy.proxyPort}，b 返回]: `));
+    const portInput = await question(chalk.cyan(buildProxyPortPrompt(nextProxy.proxyPort, true)));
     if (isBackCommand(portInput)) {
       return null;
     }

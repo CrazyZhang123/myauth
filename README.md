@@ -55,7 +55,11 @@ zjjauth pool
 
 ## 代理
 
-程序启动时会先询问是否启用本地代理，并让你输入端口号；默认主机是 `127.0.0.1`。
+程序启动时会先按当前系统询问是否启用本地代理，并让你输入端口号；默认主机是 `127.0.0.1`。
+
+- Windows：会提示 Windows 本地 HTTP 代理端口，常见如 `7890`、`7897`
+- macOS：会提示 macOS 本地 HTTP 代理端口，常见如 `7890`、`6152`
+- Linux：会提示 Linux 本地 HTTP 代理端口，常见如 `7890`、`7897`
 
 如果你想手动设置环境变量，不同系统可以这样写：
 
@@ -73,7 +77,14 @@ set HTTPS_PROXY=http://127.0.0.1:7890
 set HTTP_PROXY=http://127.0.0.1:7890
 ```
 
-macOS / Linux：
+macOS：
+
+```bash
+export HTTPS_PROXY=http://127.0.0.1:7890
+export HTTP_PROXY=http://127.0.0.1:7890
+```
+
+Linux：
 
 ```bash
 export HTTPS_PROXY=http://127.0.0.1:7890
