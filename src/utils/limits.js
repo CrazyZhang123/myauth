@@ -25,9 +25,9 @@ const SAMPLE_PROBE_TIMEOUT_MS = 20000;
 const SAMPLE_USAGE_TIMEOUT_MS = 8000;
 const TOKEN_REFRESH_TIMEOUT_MS = 30000;
 const USAGE_URL = 'https://chatgpt.com/backend-api/codex/usage';
-const ZJJAUTH_USER_AGENT = 'zjjauth/1.0.2';
+const ZJJAUTH_USER_AGENT = 'zjjauth/1.0.3';
 const MENU_AUTO_REFRESH_INTERVAL_MS = 20000;
-export const AUTO_SWITCH_MIN_REMAINING_PERCENT = 10;
+export const LOW_REMAINING_PERCENT_THRESHOLD = 10;
 
 function sleep(ms) {
   return new Promise((resolve) => {
@@ -510,30 +510,6 @@ export function getRemainingPercent(windowInfo) {
   return clampPercent(100 - Number(windowInfo.used_percent));
 }
 
-export function isWindowBelowRemainingThreshold(windowInfo, minRemainingPercent = AUTO_SWITCH_MIN_REMAINING_PERCENT) {
-  const remainingPercent = getRemainingPercent(windowInfo);
-
-  if (remainingPercent == null) {
-    return false;
-  }
-
-  return remainingPercent < minRemainingPercent;
-}
-
-export function getLowRemainingWindows(rateLimits, minRemainingPercent = AUTO_SWITCH_MIN_REMAINING_PERCENT) {
-  const windows = [];
-
-  if (isWindowBelowRemainingThreshold(rateLimits?.primary, minRemainingPercent)) {
-    windows.push('5H');
-  }
-
-  if (isWindowBelowRemainingThreshold(rateLimits?.secondary, minRemainingPercent)) {
-    windows.push('WEEK');
-  }
-
-  return windows;
-}
-
 function getCodexExecutable() {
   if (process.env.CODEX_BIN) {
     return process.env.CODEX_BIN;
@@ -734,7 +710,7 @@ function isRetryableUsageError(error) {
     return true;
   }
 
-  return /timeout|timed out|econnreset|socket hang up|eai_again|network/i.test(message);
+  return /timeout|timed out|超时|econnreset|socket hang up|eai_again|network/i.test(message);
 }
 
 async function requestUsagePayloadWithRetry(credentialData, options = {}) {
@@ -1149,7 +1125,7 @@ function getWindowRemainderList(rateLimits) {
   ];
 }
 
-export function getCredentialHealth(snapshot, minRemainingPercent = AUTO_SWITCH_MIN_REMAINING_PERCENT) {
+export function getCredentialHealth(snapshot, minRemainingPercent = LOW_REMAINING_PERCENT_THRESHOLD) {
   if (!snapshot) {
     return {
       state: 'unknown',
@@ -1224,61 +1200,6 @@ export function getCredentialHealth(snapshot, minRemainingPercent = AUTO_SWITCH_
     state: 'healthy',
     score: minRemaining * 1000 + totalRemaining,
     windows: []
-  };
-}
-
-/**
- * 选择下一个可切换的凭据
- * @param {Array} credentials - 凭据列表
- * @param {string | null} currentIndex - 当前索引
- * @param {object} limitCache - 限额缓存
- * @param {number} threshold - 触发阈值
- * @returns {{credential: object | null, skipped: Array}}
- */
-export function pickNextAvailableCredential(
-  credentials,
-  currentIndex,
-  limitCache,
-  minRemainingPercent = AUTO_SWITCH_MIN_REMAINING_PERCENT
-) {
-  if (!Array.isArray(credentials) || credentials.length === 0) {
-    return { credential: null, skipped: [] };
-  }
-
-  const skipped = [];
-  const healthyCandidates = [];
-  const unknownCandidates = [];
-  const candidates = credentials.filter((credential) => credential.index !== currentIndex);
-
-  for (const credential of candidates) {
-    const snapshot = getCredentialLimitSnapshot(limitCache, credential);
-    const health = getCredentialHealth(snapshot, minRemainingPercent);
-
-    if (health.state === 'healthy') {
-      healthyCandidates.push({
-        credential,
-        score: health.score
-      });
-      continue;
-    }
-
-    if (health.state === 'unknown') {
-      unknownCandidates.push(credential);
-      continue;
-    }
-
-    skipped.push({
-      credential,
-      exhausted_windows: health.windows,
-      state: health.state
-    });
-  }
-
-  healthyCandidates.sort((left, right) => right.score - left.score);
-
-  return {
-    credential: healthyCandidates[0]?.credential || unknownCandidates[0] || null,
-    skipped
   };
 }
 

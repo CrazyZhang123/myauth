@@ -9,14 +9,21 @@ const STATE_FILE = path.join(CONFIG_DIR, 'state.json');
 const LIMITS_FILE = path.join(CONFIG_DIR, 'limits.json');
 const DEFAULT_CONFIG = Object.freeze({
   fromDir: CONFIG_DIR,
-  targetFile: path.join(os.homedir(), '.codex', 'auth.json')
+  targetFile: path.join(os.homedir(), '.codex', 'auth.json'),
+  proxyEnabled: false,
+  proxyHost: '127.0.0.1',
+  proxyPort: '7890'
 });
 
 function normalizeConfig(config) {
   const nextConfig = (config && typeof config === 'object') ? config : {};
+  const proxyPort = String(nextConfig.proxyPort || DEFAULT_CONFIG.proxyPort).trim();
   return {
     fromDir: nextConfig.fromDir || DEFAULT_CONFIG.fromDir,
-    targetFile: nextConfig.targetFile || DEFAULT_CONFIG.targetFile
+    targetFile: nextConfig.targetFile || DEFAULT_CONFIG.targetFile,
+    proxyEnabled: nextConfig.proxyEnabled === true,
+    proxyHost: String(nextConfig.proxyHost || DEFAULT_CONFIG.proxyHost).trim() || DEFAULT_CONFIG.proxyHost,
+    proxyPort: /^\d{1,5}$/.test(proxyPort) ? proxyPort : DEFAULT_CONFIG.proxyPort
   };
 }
 

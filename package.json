@@ -1,7 +1,7 @@
 {
   "name": "zjjauth",
-  "version": "1.0.2",
-  "description": "OAuth 凭据管理工具 - 极简帐号池与自动切号 CLI",
+  "version": "1.0.3",
+  "description": "OAuth 凭据管理工具 - 极简帐号池 CLI",
   "main": "bin/cli.js",
   "type": "module",
   "bin": {
@@ -17,7 +17,6 @@
     "cli",
     "token",
     "switch",
-    "watch",
     "codex",
     "pkce",
     "multi-account",

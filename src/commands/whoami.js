@@ -3,22 +3,70 @@ import { loadConfig, saveConfig, loadCache, saveCache, loadState } from '../util
 import { question, isBackCommand } from '../utils/prompt.js';
 import { scanCredentials } from '../utils/scanner.js';
 import { resolvePath, getDefaultPaths, formatPath } from '../utils/path.js';
+import { applyProxyConfig } from '../utils/proxy.js';
 import { printMenuPageHeader } from '../utils/ui.js';
 import fs from 'fs';
 import path from 'path';
 
 async function askBoolean(prompt, defaultValue) {
-  const answer = (await question(prompt)).trim().toLowerCase();
+  while (true) {
+    const answer = (await question(prompt)).trim().toLowerCase();
 
-  if (isBackCommand(answer)) {
+    if (isBackCommand(answer)) {
+      return null;
+    }
+
+    if (!answer) {
+      return defaultValue;
+    }
+
+    if (answer === 'y' || answer === 'yes') {
+      return true;
+    }
+
+    if (answer === 'n' || answer === 'no') {
+      return false;
+    }
+
+    console.log(chalk.red('❌ 请输入 y 或 n'));
+  }
+}
+
+async function askProxyConfig(config) {
+  const proxyEnabled = await askBoolean(
+    chalk.cyan(`🌐 是否启用本地代理 [${config.proxyEnabled ? 'Y/n' : 'y/N'}，b 返回]: `),
+    config.proxyEnabled
+  );
+  if (proxyEnabled == null) {
     return null;
   }
 
-  if (!answer) {
-    return defaultValue;
+  const nextProxy = {
+    proxyEnabled,
+    proxyHost: config.proxyHost || '127.0.0.1',
+    proxyPort: config.proxyPort || '7890'
+  };
+
+  if (!proxyEnabled) {
+    return nextProxy;
   }
 
-  return answer === 'y' || answer === 'yes';
+  while (true) {
+    const portInput = await question(chalk.cyan(`🔌 代理端口 [${nextProxy.proxyPort}，b 返回]: `));
+    if (isBackCommand(portInput)) {
+      return null;
+    }
+
+    const proxyPort = String(portInput || nextProxy.proxyPort).trim();
+    const port = Number(proxyPort);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      console.log(chalk.red('❌ 端口必须是 1-65535 的整数'));
+      continue;
+    }
+
+    nextProxy.proxyPort = proxyPort;
+    return nextProxy;
+  }
 }
 
 export async function whoami() {
@@ -51,13 +99,6 @@ export async function whoami() {
       return 'back';
     }
     const targetFile = resolvePath(targetFileInput || defaults.targetFile);
-    const autoSwitchOnQuotaExhaustion = await askBoolean(
-      chalk.cyan('5H/周限额耗尽后自动切换账号？ [Y/n，b 返回]: '),
-      true
-    );
-    if (autoSwitchOnQuotaExhaustion == null) {
-      return 'back';
-    }
     
     // 自动创建目标文件的父目录
     const targetDir = path.dirname(targetFile);
@@ -69,9 +110,12 @@ export async function whoami() {
     const newConfig = { 
       fromDir, 
       targetFile,
-      autoSwitchOnQuotaExhaustion
+      proxyEnabled: config.proxyEnabled,
+      proxyHost: config.proxyHost,
+      proxyPort: config.proxyPort
     };
     saveConfig(newConfig);
+    applyProxyConfig(newConfig);
     console.log(chalk.green('\n✅ 配置已保存\n'));
 
     // 自动扫描
@@ -87,7 +131,7 @@ export async function whoami() {
   console.log(chalk.cyan.bold('⚙️ 当前配置'));
   console.log(chalk.gray(`📁 fromDir: ${formatPath(config.fromDir)}`));
   console.log(chalk.gray(`📄 targetFile: ${formatPath(config.targetFile)}`));
-  console.log(chalk.gray(`🔄 自动切号: ${config.autoSwitchOnQuotaExhaustion ? '开启' : '关闭'}`));
+  console.log(chalk.gray(`🌐 proxy: ${config.proxyEnabled ? `${config.proxyHost}:${config.proxyPort}` : '关闭'}`));
   console.log();
 
   // 显示当前生效账号
@@ -139,18 +183,17 @@ export async function whoami() {
     if (isBackCommand(targetFileInput)) {
       return 'back';
     }
-    const autoSwitchOnQuotaExhaustion = await askBoolean(
-      chalk.cyan(`🔄 5H/周限额耗尽后自动切换账号 [${config.autoSwitchOnQuotaExhaustion ? 'Y/n' : 'y/N'}，b 返回]: `),
-      config.autoSwitchOnQuotaExhaustion
-    );
-    if (autoSwitchOnQuotaExhaustion == null) {
+    const proxyConfig = await askProxyConfig(config);
+    if (!proxyConfig) {
       return 'back';
     }
     
     const newConfig = {
       fromDir: newFromDir,
       targetFile: resolvePath(targetFileInput || config.targetFile),
-      autoSwitchOnQuotaExhaustion
+      proxyEnabled: proxyConfig.proxyEnabled,
+      proxyHost: proxyConfig.proxyHost,
+      proxyPort: proxyConfig.proxyPort
     };
 
     // 自动创建目录（如果不存在）
@@ -164,6 +207,7 @@ export async function whoami() {
     }
 
     saveConfig(newConfig);
+    applyProxyConfig(newConfig);
     console.log(chalk.green('\n✅ 配置已更新\n'));
 
     // 刷新扫描

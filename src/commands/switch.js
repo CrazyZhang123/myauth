@@ -9,11 +9,11 @@ import {
   saveLimitCache
 } from '../utils/config.js';
 import {
-  AUTO_SWITCH_MIN_REMAINING_PERCENT,
   fetchCredentialUsageSample,
   findLatestRateLimitSample,
   getCredentialHealth,
   getCredentialLimitSnapshot,
+  LOW_REMAINING_PERCENT_THRESHOLD,
   getRemainingPercent,
   isSampleCurrentForState,
   recordCredentialFailure,
@@ -26,7 +26,12 @@ import { switchCredential } from './use.js';
 
 const CURRENT_USAGE_TIMEOUT_MS = 3500;
 const OTHER_USAGE_TIMEOUT_MS = 2500;
+const OTHER_USAGE_TIMEOUT_WITHOUT_CACHE_MS = 8000;
 const PRIORITY_POOL_REFRESH_LIMIT = 3;
+
+function buildUsageSampleError(message = '/usage 响应缺少额度字段') {
+  return new Error(message);
+}
 
 function shortenMessage(message, maxLength = 96) {
   const text = String(message || '').replace(/\s+/g, ' ').trim();
@@ -106,7 +111,7 @@ function pickPriorityPoolTargets(credentials, limitCache, state, currentIndex) {
     .filter((credential) => credential.index !== currentIndex && !selectedIndexes.has(credential.index))
     .map((credential) => ({
       credential,
-      health: getCredentialHealth(getCredentialLimitSnapshot(limitCache, credential), AUTO_SWITCH_MIN_REMAINING_PERCENT)
+      health: getCredentialHealth(getCredentialLimitSnapshot(limitCache, credential), LOW_REMAINING_PERCENT_THRESHOLD)
     }))
     .sort((left, right) => left.health.score - right.health.score);
 
@@ -123,7 +128,7 @@ function pickPriorityPoolTargets(credentials, limitCache, state, currentIndex) {
 
 function buildAccountStatus(snapshot, isCurrent) {
   const parts = [];
-  const health = getCredentialHealth(snapshot, AUTO_SWITCH_MIN_REMAINING_PERCENT);
+  const health = getCredentialHealth(snapshot, LOW_REMAINING_PERCENT_THRESHOLD);
 
   if (isCurrent) {
     parts.push('当前账号');
@@ -137,7 +142,7 @@ function buildAccountStatus(snapshot, isCurrent) {
       parts.push('请求失败');
       break;
     case 'low':
-      parts.push(`低于 ${AUTO_SWITCH_MIN_REMAINING_PERCENT}%`);
+      parts.push(`低于 ${LOW_REMAINING_PERCENT_THRESHOLD}%`);
       break;
     case 'exhausted':
       parts.push('已耗尽');
@@ -164,7 +169,7 @@ function printLimitLine(label, windowInfo, healthState) {
 
   const tone = healthState === 'invalid'
     ? chalk.redBright
-    : leftPercent < AUTO_SWITCH_MIN_REMAINING_PERCENT
+    : leftPercent < LOW_REMAINING_PERCENT_THRESHOLD
       ? chalk.yellowBright
       : chalk.white;
   const line = `    ${label.padEnd(13)} ${renderProgressBar(leftPercent)} ${leftPercent.toFixed(0)}% left`;
@@ -178,7 +183,7 @@ function printAccountCard(credential, snapshot, isCurrent) {
   const planLabel = credential.team_space
     ? `${credential.plan || '-'} / ${credential.team_space}`
     : (credential.plan || '-');
-  const health = getCredentialHealth(snapshot, AUTO_SWITCH_MIN_REMAINING_PERCENT);
+  const health = getCredentialHealth(snapshot, LOW_REMAINING_PERCENT_THRESHOLD);
   const titleTone = health.state === 'invalid'
     ? chalk.redBright
     : health.state === 'error'
@@ -224,6 +229,7 @@ async function refreshCurrentSnapshot(currentCredential, state, limitCache, conf
   }
 
   const previousSnapshot = getCredentialLimitSnapshot(limitCache, currentCredential);
+  let refreshError = null;
 
   try {
     const usageResult = await fetchCredentialUsageSample(currentCredential, {
@@ -243,88 +249,107 @@ async function refreshCurrentSnapshot(currentCredential, state, limitCache, conf
         notice: ''
       };
     }
+    refreshError = buildUsageSampleError();
   } catch (err) {
-    const latestSample = await findLatestRateLimitSample({ maxFiles: 8 });
-    if (latestSample && isSampleCurrentForState(latestSample, state)) {
-      limitCache = recordCredentialLimit(limitCache, currentCredential, latestSample);
-      saveLimitCache(limitCache);
-      return {
-        limitCache,
-        refreshMode: 'session',
-        notice: ''
-      };
-    }
+    refreshError = err;
+  }
 
-    if (previousSnapshot?.rate_limits) {
-      return {
-        limitCache,
-        refreshMode: 'cache',
-        notice: '当前账号实时刷新失败，已回退到最近一次已知状态'
-      };
-    }
-
-    limitCache = recordCredentialFailure(limitCache, currentCredential, err);
+  const latestSample = await findLatestRateLimitSample({ maxFiles: 8 });
+  if (latestSample && isSampleCurrentForState(latestSample, state)) {
+    limitCache = recordCredentialLimit(limitCache, currentCredential, latestSample);
     saveLimitCache(limitCache);
     return {
       limitCache,
-      refreshMode: 'error',
-      notice: '当前账号实时刷新失败，且没有可回退的额度样本'
+      refreshMode: 'session',
+      notice: ''
     };
   }
 
+  if (previousSnapshot?.rate_limits) {
+    return {
+      limitCache,
+      refreshMode: 'cache',
+      notice: '当前账号实时刷新失败，已回退到最近一次已知状态'
+    };
+  }
+
+  limitCache = recordCredentialFailure(limitCache, currentCredential, refreshError || buildUsageSampleError());
+  saveLimitCache(limitCache);
   return {
     limitCache,
-    refreshMode: previousSnapshot?.rate_limits ? 'cache' : 'none',
-    notice: ''
+    refreshMode: 'error',
+    notice: '当前账号实时刷新失败，且没有可回退的额度样本'
   };
 }
 
 async function refreshOtherSnapshots(credentials, currentIndex, limitCache, targets, config) {
   let refreshedCount = 0;
   let fallbackCount = 0;
+  let failedCount = 0;
 
-  const results = await Promise.allSettled(
+  const results = await Promise.all(
     targets.map(async (credential) => {
-      const usageResult = await fetchCredentialUsageSample(credential, {
-        credentialsDir: config.fromDir,
-        targetFile: config.targetFile,
-        isCurrent: false,
-        timeoutMs: OTHER_USAGE_TIMEOUT_MS,
-        maxAttempts: 3
-      });
+      const previousSnapshot = getCredentialLimitSnapshot(limitCache, credential);
+      const timeoutMs = previousSnapshot?.rate_limits
+        ? OTHER_USAGE_TIMEOUT_MS
+        : OTHER_USAGE_TIMEOUT_WITHOUT_CACHE_MS;
 
-      return {
-        credential,
-        usageResult
-      };
+      try {
+        const usageResult = await fetchCredentialUsageSample(credential, {
+          credentialsDir: config.fromDir,
+          targetFile: config.targetFile,
+          isCurrent: false,
+          timeoutMs,
+          maxAttempts: previousSnapshot?.rate_limits ? 2 : 3
+        });
+
+        return {
+          credential,
+          previousSnapshot,
+          usageResult,
+          error: usageResult?.sample ? null : buildUsageSampleError()
+        };
+      } catch (error) {
+        return {
+          credential,
+          previousSnapshot,
+          usageResult: null,
+          error
+        };
+      }
     })
   );
 
   for (const item of results) {
-    if (item.status === 'fulfilled' && item.value.usageResult?.sample) {
-      limitCache = recordCredentialLimit(limitCache, item.value.credential, item.value.usageResult.sample);
+    if (item.usageResult?.sample) {
+      limitCache = recordCredentialLimit(limitCache, item.credential, item.usageResult.sample);
       refreshedCount += 1;
       continue;
     }
 
-    const credential = item.status === 'fulfilled' ? item.value.credential : null;
-    const error = item.status === 'rejected' ? item.reason : null;
-    if (credential && error) {
-      const previousSnapshot = getCredentialLimitSnapshot(limitCache, credential);
-      if (previousSnapshot?.rate_limits) {
-        fallbackCount += 1;
-        continue;
-      }
-      limitCache = recordCredentialFailure(limitCache, credential, error);
+    if (item.previousSnapshot?.rate_limits) {
+      fallbackCount += 1;
+      continue;
     }
+
+    failedCount += 1;
+    limitCache = recordCredentialFailure(limitCache, item.credential, item.error || buildUsageSampleError());
   }
 
   saveLimitCache(limitCache);
 
+  const notices = [];
+  if (fallbackCount > 0) {
+    notices.push(`${fallbackCount} 个账号实时刷新失败，已保留最近一次已知状态`);
+  }
+  if (failedCount > 0) {
+    notices.push(`${failedCount} 个账号刷新失败，已标记为请求失败`);
+  }
+
   return {
     limitCache,
     refreshMode: refreshedCount > 0 ? 'usage-priority' : 'cache',
-    notice: fallbackCount > 0 ? `${fallbackCount} 个账号实时刷新失败，已保留最近一次已知状态` : ''
+    notice: notices.join('；')
   };
 }
 
@@ -359,6 +384,16 @@ function printAccountPool(view) {
   }
 }
 
+function buildCachedAccountPoolView(options = {}) {
+  return {
+    credentials: loadCache(),
+    limitCache: loadLimitCache(),
+    currentIndex: loadState()?.current_index || null,
+    refreshMode: options.refreshMode || 'cache',
+    notice: options.notice || ''
+  };
+}
+
 async function buildAccountPoolView() {
   const config = loadConfig();
   const credentials = await refreshCredentialCache(config);
@@ -387,19 +422,19 @@ async function handleAccountAction(view) {
   const choice = await question(chalk.cyan('账号序号（b 返回）: '));
 
   if (isBackCommand(choice)) {
-    return 'back';
+    return { type: 'back' };
   }
 
   const credential = view.credentials.find((item) => item.index === choice);
   if (!credential) {
     console.log(chalk.red(`\n❌ 未找到 index 为 ${choice} 的账号`));
     await question(chalk.gray('按回车继续...'));
-    return 'continue';
+    return { type: 'noop' };
   }
 
   const action = await question(chalk.cyan('操作（回车切换 / d 删除 / b 返回）: '));
   if (isBackCommand(action)) {
-    return 'continue';
+    return { type: 'noop' };
   }
 
   if (action.toLowerCase() === 'd') {
@@ -407,61 +442,63 @@ async function handleAccountAction(view) {
     if (confirmation.toLowerCase() !== 'yes') {
       console.log(chalk.yellow('\n⚠️  已取消删除'));
       await question(chalk.gray('按回车继续...'));
-      return 'continue';
+      return { type: 'noop' };
     }
 
     await deleteCredential(credential.index);
     await question(chalk.gray('\n按回车继续...'));
-    return 'continue';
+    return { type: 'deleted' };
   }
 
   if (credential.index === view.currentIndex) {
     console.log(chalk.yellow('\n⚠️  该账号已经是当前账号'));
     await question(chalk.gray('按回车继续...'));
-    return 'continue';
+    return { type: 'noop' };
   }
 
   await switchCredential(credential.index, { backup: true });
   console.log(chalk.green(`\n✅ 已切换到 [${credential.index}] ${credential.email || '-'}`));
   await question(chalk.gray('按回车继续...'));
-  return 'continue';
+  return {
+    type: 'switched',
+    currentIndex: credential.index
+  };
 }
 
 export async function showAccountPool(options = {}) {
   const interactive = options.interactive === true;
   const config = loadConfig();
 
-  while (true) {
-    const credentials = await refreshCredentialCache(config);
-    if (credentials.length === 0) {
-      console.log(chalk.yellow('暂无可用账号'));
-      console.log(chalk.gray('提示: 运行 zjjauth login 添加账号'));
-      if (interactive) {
-        await question(chalk.gray('\n按回车继续...'));
-      }
-      return;
-    }
-
+  const credentials = await refreshCredentialCache(config);
+  if (credentials.length === 0) {
+    console.log(chalk.yellow('暂无可用账号'));
+    console.log(chalk.gray('提示: 运行 zjjauth login 添加账号'));
     if (interactive) {
-      console.clear();
-      printAccountPool({
-        credentials,
-        limitCache: loadLimitCache(),
-        currentIndex: loadState()?.current_index || null,
-        refreshMode: 'cache',
-        banner: '⚡ 正在通过 /usage 后台刷新帐号池，先展示最近一次已知状态',
-        showMenuHeader: true
-      });
-      console.log();
+      await question(chalk.gray('\n按回车继续...'));
     }
+    return;
+  }
 
+  if (!interactive) {
     const view = await buildAccountPoolView();
+    printAccountPool(view);
+    return;
+  }
 
-    if (!interactive) {
-      printAccountPool(view);
-      return;
-    }
+  console.clear();
+  printAccountPool({
+    credentials,
+    limitCache: loadLimitCache(),
+    currentIndex: loadState()?.current_index || null,
+    refreshMode: 'cache',
+    banner: '⚡ 正在通过 /usage 刷新帐号池，本次进入只刷新一次',
+    showMenuHeader: true
+  });
+  console.log();
 
+  let view = await buildAccountPoolView();
+
+  while (true) {
     console.clear();
     printAccountPool({
       ...view,
@@ -470,8 +507,31 @@ export async function showAccountPool(options = {}) {
     console.log();
 
     const result = await handleAccountAction(view);
-    if (result === 'back') {
+    if (result.type === 'back') {
       return;
+    }
+
+    if (result.type === 'deleted') {
+      view = buildCachedAccountPoolView({
+        refreshMode: 'cache'
+      });
+
+      if (view.credentials.length === 0) {
+        console.log(chalk.yellow('暂无可用账号'));
+        console.log(chalk.gray('提示: 运行 zjjauth login 添加账号'));
+        await question(chalk.gray('\n按回车继续...'));
+        return;
+      }
+      continue;
+    }
+
+    if (result.type === 'switched') {
+      view = {
+        ...view,
+        currentIndex: result.currentIndex,
+        notice: '',
+        refreshMode: 'cache'
+      };
     }
   }
 }

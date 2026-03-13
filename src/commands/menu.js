@@ -4,7 +4,6 @@ import { loadConfig, loadCache, loadState } from '../utils/config.js';
 import { startLimitCacheAutoRefresh } from '../utils/limits.js';
 import { login } from './login.js';
 import { switchMenu } from './switch.js';
-import { watchMenu } from './watch.js';
 
 /**
  * 清屏
@@ -52,7 +51,6 @@ export async function menu() {
     console.log(chalk.gray('📋 菜单'));
     console.log(chalk.white('[1] 🔑 登录帐号'));
     console.log(chalk.white('[2] 🗂️  帐号池'));
-    console.log(chalk.white('[3] 👀 自动切号监控'));
     console.log(chalk.white('[0] 👋 退出'));
     console.log();
 
@@ -63,7 +61,7 @@ export async function menu() {
       otherTimeoutMs: 3000
     });
     
-    const choice = await question(chalk.cyan('请选择操作 (0-3): '));
+    const choice = await question(chalk.cyan('请选择操作 (0-2): '));
 
     if (typeof stopAutoRefresh === 'function') {
       stopAutoRefresh();
@@ -84,11 +82,6 @@ export async function menu() {
           await switchMenu();
           break;
           
-        case '3':
-          console.log('\n');
-          await watchMenu();
-          break;
-          
         case '0':
           console.log(chalk.green('\n👋 再见！'));
           console.log(chalk.cyan('🌟 https://github.com/CrazyZhang123/myauth'));
@@ -96,7 +89,7 @@ export async function menu() {
           process.exit(0);
           
         default:
-          console.log(chalk.red('\n❌ 无效选项，请输入 0-3'));
+          console.log(chalk.red('\n❌ 无效选项，请输入 0-2'));
           await question(chalk.gray('按回车继续...'));
       }
     } catch (err) {
