@@ -16,9 +16,11 @@ import {
   LOW_REMAINING_PERCENT_THRESHOLD,
   getRemainingPercent,
   isSampleCurrentForState,
+  refreshLimitCacheSilently,
   recordCredentialFailure,
   recordCredentialLimit
 } from '../utils/limits.js';
+import { getPrimaryTargetFile, resolveExistingTargets } from '../utils/targets.js';
 import { scanCredentials } from '../utils/scanner.js';
 import { printMenuPageHeader } from '../utils/ui.js';
 import { deleteCredential } from './delete.js';
@@ -28,9 +30,37 @@ const CURRENT_USAGE_TIMEOUT_MS = 3500;
 const OTHER_USAGE_TIMEOUT_MS = 2500;
 const OTHER_USAGE_TIMEOUT_WITHOUT_CACHE_MS = 8000;
 const PRIORITY_POOL_REFRESH_LIMIT = 3;
+const FAILED_REFRESH_RETRY_DELAY_MS = 5000;
 
 function buildUsageSampleError(message = '/usage 响应缺少额度字段') {
   return new Error(message);
+}
+
+function formatCredentialLabel(credential) {
+  return `[${credential?.index || '-'}] ${credential?.email || '-'}`;
+}
+
+function formatCredentialList(credentials) {
+  const labels = [...new Set((credentials || []).map((credential) => formatCredentialLabel(credential)))];
+  return labels.join('、');
+}
+
+function scheduleFailedRefreshRetry(view, config) {
+  if (!Array.isArray(view.retryTargets) || view.retryTargets.length === 0) {
+    return () => {};
+  }
+
+  const timer = setTimeout(() => {
+    void refreshLimitCacheSilently({ config });
+  }, FAILED_REFRESH_RETRY_DELAY_MS);
+
+  if (typeof timer.unref === 'function') {
+    timer.unref();
+  }
+
+  return () => {
+    clearTimeout(timer);
+  };
 }
 
 function shortenMessage(message, maxLength = 96) {
@@ -220,11 +250,14 @@ function printAccountCard(credential, snapshot, isCurrent) {
 }
 
 async function refreshCurrentSnapshot(currentCredential, state, limitCache, config) {
+  const targetFiles = resolveExistingTargets(config).map((target) => target.path);
+  const primaryTargetFile = getPrimaryTargetFile(config);
   if (!currentCredential) {
     return {
       limitCache,
       refreshMode: 'none',
-      notice: ''
+      notice: '',
+      retryTargets: []
     };
   }
 
@@ -234,7 +267,8 @@ async function refreshCurrentSnapshot(currentCredential, state, limitCache, conf
   try {
     const usageResult = await fetchCredentialUsageSample(currentCredential, {
       credentialsDir: config.fromDir,
-      targetFile: config.targetFile,
+      targetFile: primaryTargetFile,
+      targetFiles,
       isCurrent: true,
       timeoutMs: CURRENT_USAGE_TIMEOUT_MS,
       maxAttempts: 3
@@ -246,7 +280,8 @@ async function refreshCurrentSnapshot(currentCredential, state, limitCache, conf
       return {
         limitCache,
         refreshMode: 'usage',
-        notice: ''
+        notice: '',
+        retryTargets: []
       };
     }
     refreshError = buildUsageSampleError();
@@ -258,18 +293,20 @@ async function refreshCurrentSnapshot(currentCredential, state, limitCache, conf
   if (latestSample && isSampleCurrentForState(latestSample, state)) {
     limitCache = recordCredentialLimit(limitCache, currentCredential, latestSample);
     saveLimitCache(limitCache);
-    return {
-      limitCache,
-      refreshMode: 'session',
-      notice: ''
-    };
+      return {
+        limitCache,
+        refreshMode: 'session',
+        notice: '',
+        retryTargets: []
+      };
   }
 
   if (previousSnapshot?.rate_limits) {
     return {
       limitCache,
       refreshMode: 'cache',
-      notice: '当前账号实时刷新失败，已回退到最近一次已知状态'
+      notice: `当前账号 ${formatCredentialLabel(currentCredential)} 实时刷新失败，已回退到最近一次已知状态`,
+      retryTargets: [currentCredential]
     };
   }
 
@@ -278,14 +315,17 @@ async function refreshCurrentSnapshot(currentCredential, state, limitCache, conf
   return {
     limitCache,
     refreshMode: 'error',
-    notice: '当前账号实时刷新失败，且没有可回退的额度样本'
+    notice: `当前账号 ${formatCredentialLabel(currentCredential)} 刷新失败，已标记为请求失败`,
+    retryTargets: [currentCredential]
   };
 }
 
 async function refreshOtherSnapshots(credentials, currentIndex, limitCache, targets, config) {
+  const targetFiles = resolveExistingTargets(config).map((target) => target.path);
+  const primaryTargetFile = getPrimaryTargetFile(config);
   let refreshedCount = 0;
-  let fallbackCount = 0;
-  let failedCount = 0;
+  const fallbackCredentials = [];
+  const failedCredentials = [];
 
   const results = await Promise.all(
     targets.map(async (credential) => {
@@ -297,7 +337,8 @@ async function refreshOtherSnapshots(credentials, currentIndex, limitCache, targ
       try {
         const usageResult = await fetchCredentialUsageSample(credential, {
           credentialsDir: config.fromDir,
-          targetFile: config.targetFile,
+          targetFile: primaryTargetFile,
+          targetFiles,
           isCurrent: false,
           timeoutMs,
           maxAttempts: previousSnapshot?.rate_limits ? 2 : 3
@@ -328,28 +369,29 @@ async function refreshOtherSnapshots(credentials, currentIndex, limitCache, targ
     }
 
     if (item.previousSnapshot?.rate_limits) {
-      fallbackCount += 1;
+      fallbackCredentials.push(item.credential);
       continue;
     }
 
-    failedCount += 1;
+    failedCredentials.push(item.credential);
     limitCache = recordCredentialFailure(limitCache, item.credential, item.error || buildUsageSampleError());
   }
 
   saveLimitCache(limitCache);
 
   const notices = [];
-  if (fallbackCount > 0) {
-    notices.push(`${fallbackCount} 个账号实时刷新失败，已保留最近一次已知状态`);
+  if (fallbackCredentials.length > 0) {
+    notices.push(`账号 ${formatCredentialList(fallbackCredentials)} 实时刷新失败，已保留最近一次已知状态`);
   }
-  if (failedCount > 0) {
-    notices.push(`${failedCount} 个账号刷新失败，已标记为请求失败`);
+  if (failedCredentials.length > 0) {
+    notices.push(`账号 ${formatCredentialList(failedCredentials)} 刷新失败，已标记为请求失败`);
   }
 
   return {
     limitCache,
     refreshMode: refreshedCount > 0 ? 'usage-priority' : 'cache',
-    notice: notices.join('；')
+    notice: notices.join('；'),
+    retryTargets: [...fallbackCredentials, ...failedCredentials]
   };
 }
 
@@ -390,7 +432,8 @@ function buildCachedAccountPoolView(options = {}) {
     limitCache: loadLimitCache(),
     currentIndex: loadState()?.current_index || null,
     refreshMode: options.refreshMode || 'cache',
-    notice: options.notice || ''
+    notice: options.notice || '',
+    retryTargets: options.retryTargets || []
   };
 }
 
@@ -408,13 +451,18 @@ async function buildAccountPoolView() {
   const priorityTargets = pickPriorityPoolTargets(credentials, limitCache, state, currentIndex);
   const poolResult = await refreshOtherSnapshots(credentials, currentIndex, limitCache, priorityTargets, config);
   limitCache = poolResult.limitCache;
+  const retryTargets = [...currentResult.retryTargets, ...poolResult.retryTargets];
+  const notice = [currentResult.notice, poolResult.notice].filter(Boolean).join('；');
 
   return {
     credentials,
     limitCache,
     currentIndex,
     refreshMode: poolResult.refreshMode === 'usage-priority' ? 'usage-priority' : currentResult.refreshMode,
-    notice: [currentResult.notice, poolResult.notice].filter(Boolean).join('；')
+    notice: retryTargets.length > 0
+      ? `${notice}；${FAILED_REFRESH_RETRY_DELAY_MS / 1000} 秒后后台自动重试`
+      : notice,
+    retryTargets
   };
 }
 
@@ -468,6 +516,7 @@ async function handleAccountAction(view) {
 export async function showAccountPool(options = {}) {
   const interactive = options.interactive === true;
   const config = loadConfig();
+  let stopRetry = () => {};
 
   const credentials = await refreshCredentialCache(config);
   if (credentials.length === 0) {
@@ -497,6 +546,7 @@ export async function showAccountPool(options = {}) {
   console.log();
 
   let view = await buildAccountPoolView();
+  stopRetry = scheduleFailedRefreshRetry(view, config);
 
   while (true) {
     console.clear();
@@ -508,6 +558,7 @@ export async function showAccountPool(options = {}) {
 
     const result = await handleAccountAction(view);
     if (result.type === 'back') {
+      stopRetry();
       return;
     }
 
@@ -515,10 +566,13 @@ export async function showAccountPool(options = {}) {
       view = buildCachedAccountPoolView({
         refreshMode: 'cache'
       });
+      stopRetry();
+      stopRetry = scheduleFailedRefreshRetry(view, config);
 
       if (view.credentials.length === 0) {
         console.log(chalk.yellow('暂无可用账号'));
         console.log(chalk.gray('提示: 运行 zjjauth login 添加账号'));
+        stopRetry();
         await question(chalk.gray('\n按回车继续...'));
         return;
       }
@@ -530,8 +584,11 @@ export async function showAccountPool(options = {}) {
         ...view,
         currentIndex: result.currentIndex,
         notice: '',
-        refreshMode: 'cache'
+        refreshMode: 'cache',
+        retryTargets: []
       };
+      stopRetry();
+      stopRetry = scheduleFailedRefreshRetry(view, config);
     }
   }
 }
