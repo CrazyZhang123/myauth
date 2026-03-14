@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { getDefaultCodexTargetFile, getDefaultOpenCodeTargetFile } from './targets.js';
 
 const CONFIG_DIR = path.join(os.homedir(), '.zjjauth');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
@@ -9,7 +10,8 @@ const STATE_FILE = path.join(CONFIG_DIR, 'state.json');
 const LIMITS_FILE = path.join(CONFIG_DIR, 'limits.json');
 const DEFAULT_CONFIG = Object.freeze({
   fromDir: CONFIG_DIR,
-  targetFile: path.join(os.homedir(), '.codex', 'auth.json'),
+  targetFile: getDefaultCodexTargetFile(),
+  opencodeTargetFile: getDefaultOpenCodeTargetFile(),
   proxyEnabled: false,
   proxyHost: '127.0.0.1',
   proxyPort: '7890'
@@ -21,6 +23,7 @@ function normalizeConfig(config) {
   return {
     fromDir: nextConfig.fromDir || DEFAULT_CONFIG.fromDir,
     targetFile: nextConfig.targetFile || DEFAULT_CONFIG.targetFile,
+    opencodeTargetFile: nextConfig.opencodeTargetFile || DEFAULT_CONFIG.opencodeTargetFile,
     proxyEnabled: nextConfig.proxyEnabled === true,
     proxyHost: String(nextConfig.proxyHost || DEFAULT_CONFIG.proxyHost).trim() || DEFAULT_CONFIG.proxyHost,
     proxyPort: /^\d{1,5}$/.test(proxyPort) ? proxyPort : DEFAULT_CONFIG.proxyPort
@@ -73,7 +76,6 @@ export function getConfigPaths() {
 
 export function ensureRuntimeDirs() {
   ensureConfigDir();
-  ensureParentDir(DEFAULT_CONFIG.targetFile);
 }
 
 // 读取配置

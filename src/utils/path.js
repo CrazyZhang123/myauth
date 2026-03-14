@@ -1,5 +1,6 @@
 import os from 'os';
 import path from 'path';
+import { getDefaultCodexTargetFile } from './targets.js';
 
 /**
  * 解析路径，支持 ~ 符号
@@ -35,7 +36,7 @@ export function getDefaultPaths() {
   
   return {
     oauthDir: path.join(homeDir, '.zjjauth'),  // OAuth 登录凭据目录
-    targetFile: path.join(homeDir, '.codex', 'auth.json')  // 目标配置文件
+    targetFile: getDefaultCodexTargetFile()  // 目标配置文件
   };
 }
 
