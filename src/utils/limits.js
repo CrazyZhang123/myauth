@@ -15,6 +15,7 @@ import {
   saveCache,
   saveLimitCache
 } from './config.js';
+import { getPrimaryTargetFile, resolveExistingTargets } from './targets.js';
 import { updateTargetJson } from './updater.js';
 
 const CODEX_HOME = path.join(os.homedir(), '.codex');
@@ -656,8 +657,14 @@ function persistCredentialData(credential, credentialFilePath, nextData, options
 
   syncCacheCredential(credential?.path || null, mergedData);
 
-  if (options.isCurrent && options.targetFile) {
-    updateTargetJson(options.targetFile, mergedData, false);
+  const targetFiles = Array.isArray(options.targetFiles)
+    ? options.targetFiles.filter((filePath) => typeof filePath === 'string' && filePath)
+    : (options.targetFile ? [options.targetFile] : []);
+
+  if (options.isCurrent) {
+    for (const targetFile of targetFiles) {
+      updateTargetJson(targetFile, mergedData, false);
+    }
   }
 }
 
@@ -1210,6 +1217,8 @@ export function getCredentialHealth(snapshot, minRemainingPercent = LOW_REMAININ
  */
 export async function refreshLimitCacheSilently(options = {}) {
   const config = options.config || loadConfig();
+  const targetFiles = resolveExistingTargets(config).map((target) => target.path);
+  const primaryTargetFile = getPrimaryTargetFile(config);
   if (!config?.fromDir) {
     return {
       limitCache: {},
@@ -1260,7 +1269,8 @@ export async function refreshLimitCacheSilently(options = {}) {
       try {
         const result = await fetchCredentialUsageSample(credential, {
           credentialsDir: config.fromDir,
-          targetFile: config.targetFile,
+          targetFile: primaryTargetFile,
+          targetFiles,
           isCurrent: credential.index === currentCredential?.index,
           timeoutMs: credential.index === currentCredential?.index
             ? currentTimeoutMs

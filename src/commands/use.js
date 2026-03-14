@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { loadConfig, loadCache, loadState, saveState } from '../utils/config.js';
 import { updateTargetJson } from '../utils/updater.js';
+import { resolveExistingTargets } from '../utils/targets.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -28,6 +29,19 @@ function buildRecentIndexes(targetIndex, previousState) {
   ].slice(0, RECENT_INDEX_LIMIT);
 }
 
+function buildTargetResults(config, sourceData, backup) {
+  const targets = resolveExistingTargets(config);
+
+  if (targets.length === 0) {
+    throw new Error('错误: 未识别到可更新的 Codex 或 OpenCode 目录');
+  }
+
+  return targets.map((target) => ({
+    ...target,
+    result: updateTargetJson(target.path, sourceData, backup)
+  }));
+}
+
 export async function switchCredential(indexOrOptions, options = {}) {
   const config = loadConfig();
 
@@ -53,7 +67,7 @@ export async function switchCredential(indexOrOptions, options = {}) {
   }
 
   // 更新目标 JSON
-  const result = updateTargetJson(config.targetFile, sourceData, backup);
+  const targetResults = buildTargetResults(config, sourceData, backup);
   const previousState = loadState();
 
   const nextState = {
@@ -69,7 +83,7 @@ export async function switchCredential(indexOrOptions, options = {}) {
     config,
     targetIndex,
     backup,
-    result,
+    targetResults,
     state: nextState
   };
 }
@@ -79,13 +93,14 @@ export async function use(indexOrOptions, options = {}) {
     const switchResult = await switchCredential(indexOrOptions, options);
 
     console.log(chalk.green('✅ 凭据切换成功\n'));
-    console.log(chalk.gray('📝 更新的字段:'));
-    switchResult.result.updatedFields.forEach(field => console.log(chalk.gray(`  - ${field}`)));
-    console.log();
-    console.log(chalk.gray(`📁 目标文件: ${switchResult.config.targetFile}`));
-
-    if (switchResult.result.backupPath) {
-      console.log(chalk.gray(`💾 备份文件: ${switchResult.result.backupPath}`));
+    for (const target of switchResult.targetResults) {
+      console.log(chalk.gray(`📝 ${target.label} 更新的字段:`));
+      target.result.updatedFields.forEach(field => console.log(chalk.gray(`  - ${field}`)));
+      console.log(chalk.gray(`📁 目标文件: ${target.path}`));
+      if (target.result.backupPath) {
+        console.log(chalk.gray(`💾 备份文件: ${target.result.backupPath}`));
+      }
+      console.log();
     }
   } catch (err) {
     console.error(chalk.red('❌ 错误: 更新失败'));
