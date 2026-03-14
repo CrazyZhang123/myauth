@@ -1,6 +1,6 @@
 {
   "name": "zjjauth",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "OAuth 凭据管理工具 - 极简帐号池 CLI",
   "main": "bin/cli.js",
   "type": "module",
